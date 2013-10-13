@@ -26,7 +26,7 @@
 tag_styles = {
 	'newline-tag' => %w[header footer section aside article nav],
 	'tag' => %w[div p h1 h2 h3 h4 h5 h6 ul ol dl li img span a em strong],
-	'' => %w[body code pre],
+	'' => %w[body code],
 }
 
 tag_styles.keys.sort.each do |style|
@@ -36,5 +36,7 @@ tag_styles.keys.sort.each do |style|
 %>
 <%= tag %>:before { content: "<%= "<#{tag}>#{sep}" %>"; @include <%= style %>; }
 <%= tag %>:after { content: "<%= "#{sep}</#{tag}>" %>"; @include <%= style %>; }
+
+pre <%= tag %>:before, pre <%= tag %>:after { content: none; }
 <%	end
 end %>
