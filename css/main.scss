@@ -76,6 +76,11 @@ ul.posts span {
 
 /* @group Site */
 
+header {
+	display: block;
+	margin-bottom: 1em;
+}
+
 header h1 {
 	margin-bottom: 0;
 	font-size: 24pt;
@@ -83,8 +88,14 @@ header h1 {
 }
 
 header a {
-	font-weight: bold;
-	color: #000;
+	color: #008;
+	text-decoration: none;
+	&:visited {
+		color: #008;
+	}
+	&:hover {
+		text-decoration: underline;
+	}
 }
 
 .meta {
