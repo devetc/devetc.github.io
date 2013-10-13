@@ -62,30 +62,13 @@ ul.posts span {
 
 /* @group Site */
 
+header h1 {
+	margin-bottom: 0;
+	font: 24pt ProFont, Menlo, Courier, mono;
+}
+
 header a {
 	font-weight: bold;
-	text-decoration: none;
-}
-
-header h1.title {
-	display: inline-block;
-	margin-bottom: 0;
-}
-
-header h1.title a {
-	color: #a00;
-}
-
-header h1.title a:hover {
-	color: #000;
-}
-
-header a.extra {
-	color: #aaa;
-	margin-left: 1em;
-}
-
-header a.extra:hover {
 	color: #000;
 }
 
