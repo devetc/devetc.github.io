@@ -21,13 +21,13 @@
 tag_styles = {
 	'newline-tag' => %w[div header footer ul ol dl],
 	'tag' => %w[p h1 h2 h3 h4 h5 h6 li img span a em strong],
-	nil => %w[body code pre],
+	'' => %w[body code pre],
 }
 
-tag_styles.each do |style, tags|
-	next unless style
+tag_styles.keys.sort.each do |style|
+	next unless style.length > 0
 	sep = (style == 'newline-tag' ? '\\a' : '')
-	tags.each do |tag|
+	tag_styles[style].each do |tag|
 %>
 <%= tag %>:before { content: "<%= "<#{tag}>#{sep}" %>"; @include <%= style %>; }
 <%= tag %>:after { content: "<%= "#{sep}</#{tag}>" %>"; @include <%= style %>; }

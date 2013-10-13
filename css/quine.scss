@@ -18,6 +18,24 @@
 }
 
 
+div:before { content: "<div>\a"; @include newline-tag; }
+div:after { content: "\a</div>"; @include newline-tag; }
+
+header:before { content: "<header>\a"; @include newline-tag; }
+header:after { content: "\a</header>"; @include newline-tag; }
+
+footer:before { content: "<footer>\a"; @include newline-tag; }
+footer:after { content: "\a</footer>"; @include newline-tag; }
+
+ul:before { content: "<ul>\a"; @include newline-tag; }
+ul:after { content: "\a</ul>"; @include newline-tag; }
+
+ol:before { content: "<ol>\a"; @include newline-tag; }
+ol:after { content: "\a</ol>"; @include newline-tag; }
+
+dl:before { content: "<dl>\a"; @include newline-tag; }
+dl:after { content: "\a</dl>"; @include newline-tag; }
+
 p:before { content: "<p>"; @include tag; }
 p:after { content: "</p>"; @include tag; }
 
@@ -56,22 +74,4 @@ em:after { content: "</em>"; @include tag; }
 
 strong:before { content: "<strong>"; @include tag; }
 strong:after { content: "</strong>"; @include tag; }
-
-div:before { content: "<div>\a"; @include newline-tag; }
-div:after { content: "\a</div>"; @include newline-tag; }
-
-header:before { content: "<header>\a"; @include newline-tag; }
-header:after { content: "\a</header>"; @include newline-tag; }
-
-footer:before { content: "<footer>\a"; @include newline-tag; }
-footer:after { content: "\a</footer>"; @include newline-tag; }
-
-ul:before { content: "<ul>\a"; @include newline-tag; }
-ul:after { content: "\a</ul>"; @include newline-tag; }
-
-ol:before { content: "<ol>\a"; @include newline-tag; }
-ol:after { content: "\a</ol>"; @include newline-tag; }
-
-dl:before { content: "<dl>\a"; @include newline-tag; }
-dl:after { content: "\a</dl>"; @include newline-tag; }
 
