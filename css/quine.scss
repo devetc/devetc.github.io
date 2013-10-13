@@ -1,0 +1,67 @@
+/*
+ * quine.css
+ * dev etc
+ *
+ * Created by Jonathon Mah on 2013-10-12.
+ * Design and implementation by Jonathon Mah.
+ * This work is licensed under a Creative Commons Attribution 3.0 United States License.
+ * http://creativecommons.org/licenses/by/3.0/us/
+ */
+
+@mixin quine-tag {
+	color: #ccc;
+}
+
+/* Excluded tags: ['code', 'pre'] */
+
+body:before { content: "<body>"; @include quine-tag; }
+body:after { content: "</body>"; @include quine-tag; }
+
+div:before { content: "<div>"; @include quine-tag; }
+div:after { content: "</div>"; @include quine-tag; }
+
+p:before { content: "<p>"; @include quine-tag; }
+p:after { content: "</p>"; @include quine-tag; }
+
+h1:before { content: "<h1>"; @include quine-tag; }
+h1:after { content: "</h1>"; @include quine-tag; }
+
+h2:before { content: "<h2>"; @include quine-tag; }
+h2:after { content: "</h2>"; @include quine-tag; }
+
+h3:before { content: "<h3>"; @include quine-tag; }
+h3:after { content: "</h3>"; @include quine-tag; }
+
+h4:before { content: "<h4>"; @include quine-tag; }
+h4:after { content: "</h4>"; @include quine-tag; }
+
+h5:before { content: "<h5>"; @include quine-tag; }
+h5:after { content: "</h5>"; @include quine-tag; }
+
+h6:before { content: "<h6>"; @include quine-tag; }
+h6:after { content: "</h6>"; @include quine-tag; }
+
+ul:before { content: "<ul>"; @include quine-tag; }
+ul:after { content: "</ul>"; @include quine-tag; }
+
+ol:before { content: "<ol>"; @include quine-tag; }
+ol:after { content: "</ol>"; @include quine-tag; }
+
+dl:before { content: "<dl>"; @include quine-tag; }
+dl:after { content: "</dl>"; @include quine-tag; }
+
+li:before { content: "<li>"; @include quine-tag; }
+li:after { content: "</li>"; @include quine-tag; }
+
+img:before { content: "<img>"; @include quine-tag; }
+img:after { content: "</img>"; @include quine-tag; }
+
+spana:before { content: "<spana>"; @include quine-tag; }
+spana:after { content: "</spana>"; @include quine-tag; }
+
+em:before { content: "<em>"; @include quine-tag; }
+em:after { content: "</em>"; @include quine-tag; }
+
+strong:before { content: "<strong>"; @include quine-tag; }
+strong:after { content: "</strong>"; @include quine-tag; }
+

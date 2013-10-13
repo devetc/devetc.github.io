@@ -1,0 +1,19 @@
+/*
+ * quine.css
+ * dev etc
+ *
+ * Created by Jonathon Mah on 2013-10-12.
+ * Design and implementation by Jonathon Mah.
+ * This work is licensed under a Creative Commons Attribution 3.0 United States License.
+ * http://creativecommons.org/licenses/by/3.0/us/
+ */
+
+@mixin quine-tag {
+	color: #ccc;
+}
+
+/* Excluded tags: ['code', 'pre'] */
+<% for tag in ['body', 'div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'dl', 'li', 'img', 'span' 'a', 'em', 'strong'] do %>
+<%= tag %>:before { content: "<%= "<#{tag}>" %>"; @include quine-tag; }
+<%= tag %>:after { content: "<%= "</#{tag}>" %>"; @include quine-tag; }
+<% end %>
