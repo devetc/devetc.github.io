@@ -41,6 +41,18 @@ ol:after { content: "\a</ol>"; @include newline-tag; }
 dl:before { content: "<dl>\a"; @include newline-tag; }
 dl:after { content: "\a</dl>"; @include newline-tag; }
 
+section:before { content: "<section>\a"; @include newline-tag; }
+section:after { content: "\a</section>"; @include newline-tag; }
+
+aside:before { content: "<aside>\a"; @include newline-tag; }
+aside:after { content: "\a</aside>"; @include newline-tag; }
+
+article:before { content: "<article>\a"; @include newline-tag; }
+article:after { content: "\a</article>"; @include newline-tag; }
+
+nav:before { content: "<nav>\a"; @include newline-tag; }
+nav:after { content: "\a</nav>"; @include newline-tag; }
+
 p:before { content: "<p>"; @include tag; }
 p:after { content: "</p>"; @include tag; }
 
