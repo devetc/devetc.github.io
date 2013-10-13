@@ -8,9 +8,13 @@
  * http://creativecommons.org/licenses/by/3.0/us/
  */
 
+@import "common";
+
 @mixin tag {
 	color: #ccc;
 	font-weight: normal;
+	font-size: 10pt;
+	@include monospace;
 }
 
 @mixin newline-tag {

@@ -10,6 +10,8 @@
 
 /* @override http://localhost:4000/css/main.css */
 
+@import "common";
+
 /* @group Common */
 
 /* Global Reset */
@@ -76,7 +78,8 @@ ul.posts span {
 
 header h1 {
 	margin-bottom: 0;
-	font: 24pt ProFont, Menlo, Courier, mono;
+	font-size: 24pt;
+	@include monospace;
 }
 
 header a {
