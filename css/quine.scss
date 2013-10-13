@@ -23,23 +23,11 @@
 }
 
 
-div:before { content: "<div>\a"; @include newline-tag; }
-div:after { content: "\a</div>"; @include newline-tag; }
-
 header:before { content: "<header>\a"; @include newline-tag; }
 header:after { content: "\a</header>"; @include newline-tag; }
 
 footer:before { content: "<footer>\a"; @include newline-tag; }
 footer:after { content: "\a</footer>"; @include newline-tag; }
-
-ul:before { content: "<ul>\a"; @include newline-tag; }
-ul:after { content: "\a</ul>"; @include newline-tag; }
-
-ol:before { content: "<ol>\a"; @include newline-tag; }
-ol:after { content: "\a</ol>"; @include newline-tag; }
-
-dl:before { content: "<dl>\a"; @include newline-tag; }
-dl:after { content: "\a</dl>"; @include newline-tag; }
 
 section:before { content: "<section>\a"; @include newline-tag; }
 section:after { content: "\a</section>"; @include newline-tag; }
@@ -52,6 +40,9 @@ article:after { content: "\a</article>"; @include newline-tag; }
 
 nav:before { content: "<nav>\a"; @include newline-tag; }
 nav:after { content: "\a</nav>"; @include newline-tag; }
+
+div:before { content: "<div>"; @include tag; }
+div:after { content: "</div>"; @include tag; }
 
 p:before { content: "<p>"; @include tag; }
 p:after { content: "</p>"; @include tag; }
@@ -73,6 +64,15 @@ h5:after { content: "</h5>"; @include tag; }
 
 h6:before { content: "<h6>"; @include tag; }
 h6:after { content: "</h6>"; @include tag; }
+
+ul:before { content: "<ul>"; @include tag; }
+ul:after { content: "</ul>"; @include tag; }
+
+ol:before { content: "<ol>"; @include tag; }
+ol:after { content: "</ol>"; @include tag; }
+
+dl:before { content: "<dl>"; @include tag; }
+dl:after { content: "</dl>"; @include tag; }
 
 li:before { content: "<li>"; @include tag; }
 li:after { content: "</li>"; @include tag; }
