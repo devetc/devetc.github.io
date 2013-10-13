@@ -27,7 +27,7 @@ html, body {
 
 body {
 	background-color: #f8f8f8;
-	font-family: Georgia, "Times New Roman", Times, serif;
+	font-family: Helvetica, Arial, sans-serif;
 	text-align: justify;
 	width: 42em;
 	margin: 3em auto 2em;
@@ -44,7 +44,7 @@ p {
 a {
 	color: #00a;
 	&:hover {
-		color: #000;
+		color: #00b;
 	}
 	&:visited {
 		color: #a0a;
@@ -95,10 +95,11 @@ header {
 			text-decoration: underline;
 		}
 	}
-}
 
-.meta {
-	color: #aaa;
+	.subtitle {
+		font-weight: bold;
+		font-size: 85%;
+	}
 }
 
 footer {
@@ -108,13 +109,12 @@ footer {
 	margin-top: 2em;
 	overflow: hidden;
 
-	.contact {
-		float: left;
-		margin-right: 3em;
+	a {
+		color: #7075B1;
+	}
 
-		a {
-			color: #8085C1;
-		}
+	ul.contact {
+		list-style: none;
 	}
 
 	.rss {
@@ -131,6 +131,10 @@ footer {
 /* @end */
 
 /* @group Posts */
+
+.meta {
+	color: #aaa;
+}
 
 .post {
 	pre {
