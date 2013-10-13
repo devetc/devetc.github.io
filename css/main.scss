@@ -43,13 +43,13 @@ p {
 
 a {
 	color: #00a;
-	&:hover {
-		color: #00b;
-	}
+
 	&:visited {
 		color: #a0a;
 	}
-
+	&:hover {
+		color: #00b;
+	}
 }
 
 /* @end */
