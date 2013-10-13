@@ -43,14 +43,13 @@ p {
 
 a {
 	color: #00a;
-}
+	&:hover {
+		color: #000;
+	}
+	&:visited {
+		color: #a0a;
+	}
 
-a:hover {
-	color: #000;
-}
-
-a:visited {
-	color: #a0a;
 }
 
 /* @end */
@@ -60,16 +59,16 @@ a:visited {
 ul.posts {
 	list-style-type: none;
 	margin-bottom: 2em;
-}
 
-ul.posts li {
-	line-height: 1.75em;
-}
+	li {
+		line-height: 1.75em;
+	}
 
-ul.posts span {
-	color: #aaa;
-	font-family: Monaco, "Courier New", monospace;
-	font-size: 80%;
+	span {
+		color: #aaa;
+		font-family: Monaco, "Courier New", monospace;
+		font-size: 80%;
+	}
 }
 
 /* @end */
@@ -79,22 +78,22 @@ ul.posts span {
 header {
 	display: block;
 	margin-bottom: 1em;
-}
 
-header h1 {
-	margin-bottom: 0;
-	font-size: 24pt;
-	@include monospace;
-}
-
-header a {
-	color: #008;
-	text-decoration: none;
-	&:visited {
-		color: #008;
+	h1 {
+		margin-bottom: 0;
+		font-size: 24pt;
+		@include monospace;
 	}
-	&:hover {
-		text-decoration: underline;
+
+	a {
+		color: #008;
+		text-decoration: none;
+		&:visited {
+			color: #008;
+		}
+		&:hover {
+			text-decoration: underline;
+		}
 	}
 }
 
@@ -108,63 +107,63 @@ footer {
 	border-top: 4px solid #eee;
 	margin-top: 2em;
 	overflow: hidden;
+
+	.contact {
+		float: left;
+		margin-right: 3em;
+
+		a {
+			color: #8085C1;
+		}
+	}
+
+	.rss {
+		margin-top: 1.1em;
+		margin-right: -.2em;
+		float: right;
+		img {
+			border: 0;
+		}
+	}
 }
 
-footer .contact {
-	float: left;
-	margin-right: 3em;
-}
-
-footer .contact a {
-	color: #8085C1;
-}
-
-footer .rss {
-	margin-top: 1.1em;
-	margin-right: -.2em;
-	float: right;
-}
-
-footer .rss img {
-	border: 0;
-}
 
 /* @end */
 
 /* @group Posts */
 
-/* standard */
+.post {
+	pre {
+		border: 1px solid #ddd;
+		background-color: #eef;
+		padding: 0 .4em;
+	}
 
-.post pre {
-	border: 1px solid #ddd;
-	background-color: #eef;
-	padding: 0 .4em;
-}
+	ul, ol {
+		margin-left: 1.35em;
+	}
 
-.post ul, .post ol {
-	margin-left: 1.35em;
-}
+	code {
+		border: 1px solid #ddd;
+		background-color: #eef;
+		padding: 0 .2em;
+	}
 
-.post code {
-	border: 1px solid #ddd;
-	background-color: #eef;
-	padding: 0 .2em;
-}
+	pre code {
+		border: none;
+	}
 
-.post pre code {
-	border: none;
-}
+	/* terminal */
 
-/* terminal */
+	pre.terminal {
+		border: 1px solid #000;
+		background-color: #333;
+		color: #FFF;
 
-.post pre.terminal {
-	border: 1px solid #000;
-	background-color: #333;
-	color: #FFF;
-}
-
-.post pre.terminal code {
-	background-color: #333;
+		code {
+			background-color: #333;
+		}
+	}
 }
 
 /* @end */
