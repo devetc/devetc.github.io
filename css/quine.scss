@@ -8,60 +8,70 @@
  * http://creativecommons.org/licenses/by/3.0/us/
  */
 
-@mixin quine-tag {
+@mixin tag {
 	color: #ccc;
 }
 
-/* Excluded tags: ['code', 'pre'] */
+@mixin newline-tag {
+	@include tag;
+	white-space: pre;
+}
 
-body:before { content: "<body>"; @include quine-tag; }
-body:after { content: "</body>"; @include quine-tag; }
 
-div:before { content: "<div>"; @include quine-tag; }
-div:after { content: "</div>"; @include quine-tag; }
+p:before { content: "<p>"; @include tag; }
+p:after { content: "</p>"; @include tag; }
 
-p:before { content: "<p>"; @include quine-tag; }
-p:after { content: "</p>"; @include quine-tag; }
+h1:before { content: "<h1>"; @include tag; }
+h1:after { content: "</h1>"; @include tag; }
 
-h1:before { content: "<h1>"; @include quine-tag; }
-h1:after { content: "</h1>"; @include quine-tag; }
+h2:before { content: "<h2>"; @include tag; }
+h2:after { content: "</h2>"; @include tag; }
 
-h2:before { content: "<h2>"; @include quine-tag; }
-h2:after { content: "</h2>"; @include quine-tag; }
+h3:before { content: "<h3>"; @include tag; }
+h3:after { content: "</h3>"; @include tag; }
 
-h3:before { content: "<h3>"; @include quine-tag; }
-h3:after { content: "</h3>"; @include quine-tag; }
+h4:before { content: "<h4>"; @include tag; }
+h4:after { content: "</h4>"; @include tag; }
 
-h4:before { content: "<h4>"; @include quine-tag; }
-h4:after { content: "</h4>"; @include quine-tag; }
+h5:before { content: "<h5>"; @include tag; }
+h5:after { content: "</h5>"; @include tag; }
 
-h5:before { content: "<h5>"; @include quine-tag; }
-h5:after { content: "</h5>"; @include quine-tag; }
+h6:before { content: "<h6>"; @include tag; }
+h6:after { content: "</h6>"; @include tag; }
 
-h6:before { content: "<h6>"; @include quine-tag; }
-h6:after { content: "</h6>"; @include quine-tag; }
+li:before { content: "<li>"; @include tag; }
+li:after { content: "</li>"; @include tag; }
 
-ul:before { content: "<ul>"; @include quine-tag; }
-ul:after { content: "</ul>"; @include quine-tag; }
+img:before { content: "<img>"; @include tag; }
+img:after { content: "</img>"; @include tag; }
 
-ol:before { content: "<ol>"; @include quine-tag; }
-ol:after { content: "</ol>"; @include quine-tag; }
+span:before { content: "<span>"; @include tag; }
+span:after { content: "</span>"; @include tag; }
 
-dl:before { content: "<dl>"; @include quine-tag; }
-dl:after { content: "</dl>"; @include quine-tag; }
+a:before { content: "<a>"; @include tag; }
+a:after { content: "</a>"; @include tag; }
 
-li:before { content: "<li>"; @include quine-tag; }
-li:after { content: "</li>"; @include quine-tag; }
+em:before { content: "<em>"; @include tag; }
+em:after { content: "</em>"; @include tag; }
 
-img:before { content: "<img>"; @include quine-tag; }
-img:after { content: "</img>"; @include quine-tag; }
+strong:before { content: "<strong>"; @include tag; }
+strong:after { content: "</strong>"; @include tag; }
 
-spana:before { content: "<spana>"; @include quine-tag; }
-spana:after { content: "</spana>"; @include quine-tag; }
+div:before { content: "<div>\a"; @include newline-tag; }
+div:after { content: "\a</div>"; @include newline-tag; }
 
-em:before { content: "<em>"; @include quine-tag; }
-em:after { content: "</em>"; @include quine-tag; }
+header:before { content: "<header>\a"; @include newline-tag; }
+header:after { content: "\a</header>"; @include newline-tag; }
 
-strong:before { content: "<strong>"; @include quine-tag; }
-strong:after { content: "</strong>"; @include quine-tag; }
+footer:before { content: "<footer>\a"; @include newline-tag; }
+footer:after { content: "\a</footer>"; @include newline-tag; }
+
+ul:before { content: "<ul>\a"; @include newline-tag; }
+ul:after { content: "\a</ul>"; @include newline-tag; }
+
+ol:before { content: "<ol>\a"; @include newline-tag; }
+ol:after { content: "\a</ol>"; @include newline-tag; }
+
+dl:before { content: "<dl>\a"; @include newline-tag; }
+dl:after { content: "\a</dl>"; @include newline-tag; }
 

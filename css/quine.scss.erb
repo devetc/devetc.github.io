@@ -8,12 +8,28 @@
  * http://creativecommons.org/licenses/by/3.0/us/
  */
 
-@mixin quine-tag {
+@mixin tag {
 	color: #ccc;
 }
 
-/* Excluded tags: ['code', 'pre'] */
-<% for tag in ['body', 'div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'dl', 'li', 'img', 'span' 'a', 'em', 'strong'] do %>
-<%= tag %>:before { content: "<%= "<#{tag}>" %>"; @include quine-tag; }
-<%= tag %>:after { content: "<%= "</#{tag}>" %>"; @include quine-tag; }
-<% end %>
+@mixin newline-tag {
+	@include tag;
+	white-space: pre;
+}
+
+<%
+tag_styles = {
+	'newline-tag' => %w[div header footer ul ol dl],
+	'tag' => %w[p h1 h2 h3 h4 h5 h6 li img span a em strong],
+	nil => %w[body code pre],
+}
+
+tag_styles.each do |style, tags|
+	next unless style
+	sep = (style == 'newline-tag' ? '\\a' : '')
+	tags.each do |tag|
+%>
+<%= tag %>:before { content: "<%= "<#{tag}>#{sep}" %>"; @include <%= style %>; }
+<%= tag %>:after { content: "<%= "#{sep}</#{tag}>" %>"; @include <%= style %>; }
+<%	end
+end %>
