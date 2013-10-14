@@ -1,3 +1,4 @@
 name: dev etc
+url: http://devetc.org/
 markdown: redcarpet
 pygments: true
