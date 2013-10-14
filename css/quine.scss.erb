@@ -1,0 +1,42 @@
+/*
+ * quine.css
+ * dev etc
+ *
+ * Created by Jonathon Mah on 2013-10-12.
+ * Design and implementation by Jonathon Mah.
+ * This work is licensed under a Creative Commons Attribution 3.0 United States License.
+ * http://creativecommons.org/licenses/by/3.0/us/
+ */
+
+@import "common";
+
+@mixin tag {
+	color: #ccc;
+	font-weight: normal;
+	font-size: 9pt;
+	@include monospace;
+}
+
+@mixin newline-tag {
+	@include tag;
+	white-space: pre;
+}
+
+<%
+tag_styles = {
+	'newline-tag' => %w[header footer section aside article nav],
+	'tag' => %w[div p h1 h2 h3 h4 h5 h6 ul ol dl li dt dd img span a em strong],
+	'' => %w[body code],
+}
+
+tag_styles.keys.sort.each do |style|
+	next unless style.length > 0
+	sep = (style == 'newline-tag' ? '\\a' : '')
+	tag_styles[style].each do |tag|
+%>
+<%= tag %>:before { content: "<%= "<#{tag}>#{sep}" %>"; @include <%= style %>; }
+<%= tag %>:after { content: "<%= "#{sep}</#{tag}>" %>"; @include <%= style %>; }
+
+pre <%= tag %>:before, pre <%= tag %>:after { content: none; }
+<%	end
+end %>
