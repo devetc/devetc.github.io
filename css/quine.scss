@@ -113,6 +113,16 @@ li:after { content: "</li>"; @include tag; }
 
 pre li:before, pre li:after { content: none; }
 
+dt:before { content: "<dt>"; @include tag; }
+dt:after { content: "</dt>"; @include tag; }
+
+pre dt:before, pre dt:after { content: none; }
+
+dd:before { content: "<dd>"; @include tag; }
+dd:after { content: "</dd>"; @include tag; }
+
+pre dd:before, pre dd:after { content: none; }
+
 img:before { content: "<img>"; @include tag; }
 img:after { content: "</img>"; @include tag; }
 
