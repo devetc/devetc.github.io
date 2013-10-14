@@ -29,9 +29,10 @@ body {
 	color: #333;
 	background-color: #f8f8f8;
 	font-family: Helvetica, Arial, sans-serif;
-	text-align: justify;
+	text-align: left;
 	width: 42em;
 	margin: 1em auto;
+	line-height: 1.25em;
 }
 
 p {
@@ -47,15 +48,6 @@ a {
 	&:hover {
 		color: #00b;
 	}
-}
-
-/* @end */
-
-/* @group Home */
-
-ol.posts {
-	list-style-type: none;
-	margin-bottom: 2em;
 }
 
 /* @end */
@@ -117,12 +109,28 @@ footer {
 
 /* @end */
 
+/* @group Index */
+
+ol.posts {
+	list-style-type: none;
+	margin-bottom: 2em;
+
+	a {
+		font-size: 1.2em;
+	}
+
+	.post-date {
+		font-size: 10pt;
+	}
+}
+
+/* @end */
+
 /* @group Posts */
 
 .post-date {
 	color: #666;
 	font-style: italic;
-	font-size: 10pt;
 }
 
 .post {
