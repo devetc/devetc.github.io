@@ -21,20 +21,17 @@
 	padding: 0;
 }
 
-html, body {
+html {
 	height: 100%;
 }
 
 body {
+	color: #333;
 	background-color: #f8f8f8;
 	font-family: Helvetica, Arial, sans-serif;
 	text-align: justify;
 	width: 42em;
-	margin: 0 auto 2em;
-}
-
-h1 {
-	margin-bottom: 1em;
+	margin: 1em auto;
 }
 
 p {
@@ -56,19 +53,9 @@ a {
 
 /* @group Home */
 
-ul.posts {
+ol.posts {
 	list-style-type: none;
 	margin-bottom: 2em;
-
-	li {
-		line-height: 1.75em;
-	}
-
-	span {
-		color: #aaa;
-		font-family: Monaco, "Courier New", monospace;
-		font-size: 80%;
-	}
 }
 
 /* @end */
@@ -132,8 +119,10 @@ footer {
 
 /* @group Posts */
 
-.meta {
-	color: #aaa;
+.post-date {
+	color: #666;
+	font-style: italic;
+	font-size: 10pt;
 }
 
 .post {
