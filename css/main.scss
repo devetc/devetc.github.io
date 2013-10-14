@@ -133,10 +133,16 @@ ol.posts {
 	font-style: italic;
 }
 
+$code_background: #efefff;
+
 .post {
+	.highlight {
+		background: none;
+	}
+
 	pre {
 		border: 1px solid #ddd;
-		background-color: #eef;
+		background-color: $code_background;
 		padding: 0 .4em;
 	}
 
@@ -146,7 +152,7 @@ ol.posts {
 
 	code {
 		border: 1px solid #ddd;
-		background-color: #eef;
+		background-color: $code_background;
 		padding: 0 .2em;
 	}
 
