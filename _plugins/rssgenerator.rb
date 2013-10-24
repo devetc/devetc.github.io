@@ -48,10 +48,11 @@ module Jekyll
 
         post_limit = (site.config['rss_post_limit'] - 1 rescue site.posts.count)
 
+        site_url_slash = ensure_trailing_slash(site.config['url'])
         site.posts.reverse[0..post_limit].each do |post|
           maker.items.new_item do |item|
             item.title = post.title
-            item.link = "#{site.config['url']}#{post.url}"
+            item.link = site_url_slash + remove_leading_slash(post.url)
             item.description = parser.convert(post.excerpt)
             item.updated = post.date
           end
@@ -86,7 +87,11 @@ module Jekyll
     #
     # Returns the path with a leading slash
     def ensure_leading_slash(path)
-      path[0] == "/" ? path : "/#{path}"
+      path[0] == ?/ ? path : "/#{path}"
+    end
+
+    def remove_leading_slash(path)
+      path[0] == ?/ ? path[1..-1] : path
     end
 
     # Ensures the given path has a trailing slash
@@ -95,7 +100,7 @@ module Jekyll
     #
     # Returns the path with a trailing slash
     def ensure_trailing_slash(path)
-      path[-1] == "/" ? path : "#{path}/"
+      path[-1] == ?/ ? path : "#{path}/"
     end
 
     # Ensures the given directory exists
