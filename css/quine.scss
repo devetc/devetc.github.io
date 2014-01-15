@@ -26,125 +26,115 @@
 header:before { content: "<header>\a"; @include newline-tag; }
 header:after { content: "\a</header>"; @include newline-tag; }
 
-pre header:before, pre header:after { content: none; }
+pre header { &:before, &:after { content: none; } }
 
 footer:before { content: "<footer>\a"; @include newline-tag; }
 footer:after { content: "\a</footer>"; @include newline-tag; }
 
-pre footer:before, pre footer:after { content: none; }
+pre footer { &:before, &:after { content: none; } }
 
 section:before { content: "<section>\a"; @include newline-tag; }
 section:after { content: "\a</section>"; @include newline-tag; }
 
-pre section:before, pre section:after { content: none; }
+pre section { &:before, &:after { content: none; } }
 
 aside:before { content: "<aside>\a"; @include newline-tag; }
 aside:after { content: "\a</aside>"; @include newline-tag; }
 
-pre aside:before, pre aside:after { content: none; }
+pre aside { &:before, &:after { content: none; } }
 
 article:before { content: "<article>\a"; @include newline-tag; }
 article:after { content: "\a</article>"; @include newline-tag; }
 
-pre article:before, pre article:after { content: none; }
+pre article { &:before, &:after { content: none; } }
 
 nav:before { content: "<nav>\a"; @include newline-tag; }
 nav:after { content: "\a</nav>"; @include newline-tag; }
 
-pre nav:before, pre nav:after { content: none; }
+pre nav { &:before, &:after { content: none; } }
 
 div:before { content: "<div>"; @include tag; }
 div:after { content: "</div>"; @include tag; }
 
-pre div:before, pre div:after { content: none; }
+pre div { &:before, &:after { content: none; } }
 
 p:before { content: "<p>"; @include tag; }
 p:after { content: "</p>"; @include tag; }
 
-pre p:before, pre p:after { content: none; }
+pre p { &:before, &:after { content: none; } }
 
 h1:before { content: "<h1>"; @include tag; }
 h1:after { content: "</h1>"; @include tag; }
 
-pre h1:before, pre h1:after { content: none; }
+pre h1 { &:before, &:after { content: none; } }
 
 h2:before { content: "<h2>"; @include tag; }
 h2:after { content: "</h2>"; @include tag; }
 
-pre h2:before, pre h2:after { content: none; }
+pre h2 { &:before, &:after { content: none; } }
 
 h3:before { content: "<h3>"; @include tag; }
 h3:after { content: "</h3>"; @include tag; }
 
-pre h3:before, pre h3:after { content: none; }
+pre h3 { &:before, &:after { content: none; } }
 
 h4:before { content: "<h4>"; @include tag; }
 h4:after { content: "</h4>"; @include tag; }
 
-pre h4:before, pre h4:after { content: none; }
+pre h4 { &:before, &:after { content: none; } }
 
 h5:before { content: "<h5>"; @include tag; }
 h5:after { content: "</h5>"; @include tag; }
 
-pre h5:before, pre h5:after { content: none; }
+pre h5 { &:before, &:after { content: none; } }
 
 h6:before { content: "<h6>"; @include tag; }
 h6:after { content: "</h6>"; @include tag; }
 
-pre h6:before, pre h6:after { content: none; }
+pre h6 { &:before, &:after { content: none; } }
 
 ul:before { content: "<ul>"; @include tag; }
 ul:after { content: "</ul>"; @include tag; }
 
-pre ul:before, pre ul:after { content: none; }
+pre ul { &:before, &:after { content: none; } }
 
 ol:before { content: "<ol>"; @include tag; }
 ol:after { content: "</ol>"; @include tag; }
 
-pre ol:before, pre ol:after { content: none; }
+pre ol { &:before, &:after { content: none; } }
 
 dl:before { content: "<dl>"; @include tag; }
 dl:after { content: "</dl>"; @include tag; }
 
-pre dl:before, pre dl:after { content: none; }
-
-li:before { content: "<li>"; @include tag; }
-li:after { content: "</li>"; @include tag; }
-
-pre li:before, pre li:after { content: none; }
+pre dl { &:before, &:after { content: none; } }
 
 dt:before { content: "<dt>"; @include tag; }
 dt:after { content: "</dt>"; @include tag; }
 
-pre dt:before, pre dt:after { content: none; }
+pre dt { &:before, &:after { content: none; } }
 
 dd:before { content: "<dd>"; @include tag; }
 dd:after { content: "</dd>"; @include tag; }
 
-pre dd:before, pre dd:after { content: none; }
+pre dd { &:before, &:after { content: none; } }
 
 img:before { content: "<img>"; @include tag; }
 img:after { content: "</img>"; @include tag; }
 
-pre img:before, pre img:after { content: none; }
+pre img { &:before, &:after { content: none; } }
 
 span:before { content: "<span>"; @include tag; }
 span:after { content: "</span>"; @include tag; }
 
-pre span:before, pre span:after { content: none; }
+pre span { &:before, &:after { content: none; } }
 
 a:before { content: "<a>"; @include tag; }
 a:after { content: "</a>"; @include tag; }
 
-pre a:before, pre a:after { content: none; }
+pre a { &:before, &:after { content: none; } }
 
 em:before { content: "<em>"; @include tag; }
 em:after { content: "</em>"; @include tag; }
 
-pre em:before, pre em:after { content: none; }
-
-strong:before { content: "<strong>"; @include tag; }
-strong:after { content: "</strong>"; @include tag; }
-
-pre strong:before, pre strong:after { content: none; }
+pre em { &:before, &:after { content: none; } }
 
