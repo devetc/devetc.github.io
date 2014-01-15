@@ -1,5 +1,5 @@
 name: dev etc
 url: http://devetc.org/
 author: Jonathon Mah
-markdown: redcarpet
+markdown: kramdown
 pygments: true
