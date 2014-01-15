@@ -37,6 +37,9 @@ tag_styles.keys.sort.each do |style|
 <%= tag %>:before { content: "<%= "<#{tag}>#{sep}" %>"; @include <%= style %>; }
 <%= tag %>:after { content: "<%= "#{sep}</#{tag}>" %>"; @include <%= style %>; }
 
+sup <%= tag %> { &:before, &:after { content: none; } }
 pre <%= tag %> { &:before, &:after { content: none; } }
 <%	end
 end %>
+
+a.reversefootnote { &:before, &:after { content: none; } }
