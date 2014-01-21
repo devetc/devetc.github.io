@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+		<title>dev etc : Timers, Clocks, and Cocoa</title>
+		<meta name="viewport" content="width=device-width">
+
+		<!-- syntax highlighting CSS -->
+		<link rel="stylesheet" href="/css/syntax.css">
+
+		<!-- Custom CSS -->
+		<link rel="stylesheet" href="/css/main.css">
+		<link rel="stylesheet" href="/css/quine.css">
+
+		<!-- Google Analytics -->
+		<script>
+		(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+		(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+		m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+		})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+		ga('create', 'UA-44839563-1', 'devetc.org');
+		ga('send', 'pageview');
+		</script>
+
+	</head>
+	<body>
+
+		<header>
+			<h1><a href="/">dev etc</a></h1>
+			<div class="subtitle">Where mistakes go to die.</div>
+		</header>
+
+		<article>
+	<div class="post-date">Tuesday, 2014-01-21</div>
+	<h1>Timers, Clocks, and Cocoa</h1>
+	<div class="subtitle">Read me before using NSTimer.</div>
+
+	<div class="post">
+	<p>Time is a complicated thing (cf. relativity), yet it&#8217;s a vital part of programs interacting with the world.
+In casual conversation we usually speak as if there is one value called &#8220;the time&#8221;, which we can read from &#8220;the clock&#8221;.
+But because &#8220;the clock&#8221; can be changed by both the user and automatic time setting, we realize things  unfortunately cannot be not that simple.
+There are, in fact, multiple clocks.
+At first glance they all look like they run at the same rate and so it doesn&#8217;t appear important to choose one over another, but they have quite different behaviors and inevitably diverge over time.</p>
+
+<p>Choosing the wrong clock can make your software behave unexpectedly, and possibly crash.
+A lot of code makes incorrect assumptions about the real-time clock, and takes non-sensical actions if a time difference is negative.
+But because clock changes are uncommon, these bugs can appear to be <a href="http://en.wikipedia.org/wiki/Heisenbug">Heisenbugs</a>.</p>
+
+<p>As an application developer, these are the most useful clocks in practice<sup id="fnref:cpu-time"><a href="#fn:cpu-time" class="footnote">1</a></sup>:</p>
+
+<ol>
+  <li>
+    <p>The <strong>real-time clock</strong>, usually accessed in Cocoa via <code>NSDate</code>.<sup id="fnref:unix-realtime"><a href="#fn:unix-realtime" class="footnote">2</a></sup>
+This is the system&#8217;s best guess of <a href="http://en.wikipedia.org/wiki/UTC">coordinated universal time</a> (UTC).
+The user can change this clock arbitrarily, and the NTP (Network Time Protocol) serivce also makes changes as it tries to keep it in sync with an external reference.
+While the value of this clock typically increases by 1 second per real second, at times it runs faster or slower, and makes discontinuous jumps both forwards and backwards.<sup id="fnref:ntp-clock-changing"><a href="#fn:ntp-clock-changing" class="footnote">3</a></sup></p>
+  </li>
+  <li>
+    <p><strong>Monotonic time</strong> is basically a counter that gets incremented when a physical timer signals the CPU via a timer interrupt.
+On Mac OS X and iOS, the counter value is returned from <code>mach_absolute_time()</code>, and the number of counts per second is returned by <code>mach_timebase_info()</code>.<sup id="fnref:mach-absolute-time-units"><a href="#fn:mach-absolute-time-units" class="footnote">4</a></sup>
+Several functions include the conversion to seconds: <code>-[NSProcessInfo systemUptime]</code>, <code>CACurrentMediaTime()</code>, and others.
+The particular value of this counter isn&#8217;t really useful, but the difference between two readings tells you how much time has elapsed, regardless of any changes to the real-time clock.
+This is useful for measuring throughput, or processing speed, of some operation — numbers like &#8220;frames per second&#8221;.
+However since the CPU increments this counter, <em>the monotonic clock stops when the CPU is powered down</em>.</p>
+  </li>
+  <li>
+    <p><strong>Boot time</strong>, which is like monotomic time but does not pause when the system goes to sleep.
+This value is reported by the <code>uptime</code> tool.</p>
+  </li>
+</ol>
+
+<p><code>NSTimer</code> uses monotonic time. This means it pauses when the system goes to sleep, which happens unpredictably and opportunistically on iOS!
+This makes <code>NSTimer</code> <strong>incorrect for timeouts and timing</strong> involving anything external — from waiting for a server response to timing the cooking of an egg.
+<code>NSTimer</code> is only appropriate if the process being timed is confined to the system — such as your app waiting for a result from the kernel, or another app.</p>
+
+<h2 id="pick-your-clock">Pick your clock</h2>
+
+<iframe width="640" height="360" src="//www.youtube-nocookie.com/embed/ZRM8mq-ZSO0?rel=0" frameborder="0" allowfullscreen=""></iframe>
+
+<p>This chart lays out how the clock values change over time in the above video:</p>
+
+<p><img src="/assets/MyLilTimers-clock-values-over-time.svg" alt="Clock values over time" /></p>
+
+<p>For measuring durations without interference from real-time clock changes or system sleep, <strong>you need to use boot time</strong>. Unfortunately this is unreasonably difficult with Cocoa, so I wrote something: <a href="https://github.com/jmah/MyLilTimer">MyLilTimer</a> has an interface similar to <code>NSTimer</code>, but with the option of the three behaviors above. Because iOS suspends apps in the background, an app can often be notified of the firing of a timer significantly after it was scheduled to fire. The <code>-timeSinceFireDate</code> method returns that duration, using the clock selected by the timer.</p>
+
+<p>To make matters worse, iOS devices don&#8217;t go to sleep when plugged in — including when running an app from Xcode. So using <code>NSTimer</code> can appear to act like using boot time, until you run with the device unplugged!</p>
+
+<p>The Cocoa frameworks do not offer any way to be notified of these time discontinuities in general. UIKit offers <code>UIApplicationSignificantTimeChangeNotification</code> which fires when the real-time clock changes (and a couple of other cases useful for calendar-type apps), but not when waking from sleep. On the Mac there is <code>NSWorkspaceDidWakeNotification</code>,<sup id="fnref:sleep-wake"><a href="#fn:sleep-wake" class="footnote">5</a></sup> but there is no (public) counterpart for iOS.</p>
+
+<p><code>dispatch_after</code> (and a timer <code>dispatch_source</code>) offers both the monotonic and real-time clock, depending on how the <code>dispatch_time</code> object is created. The boot time behavior is a combination of the two — run continuously during system clock changes (like the monotonic clock), and stay running during system sleep (like the real-time clock) — so we should be able to build our own. The <a href="http://opensource.apple.com/source/libdispatch/libdispatch-339.1.9/src/source.c">libdispatch source</a> observes the <code>HOST_NOTIFY_CALENDAR_CHANGE</code> Mach notification to reschedule real-time clock timers. The only form of documentation appears to be comments in the <a href="http://www.opensource.apple.com/source/xnu/xnu-2422.1.72/osfmk/kern/clock.c">kernel source</a>, which indeed indicates it&#8217;s sent when the real-time clock changes, as well as when the system is woken:</p>
+
+<pre><code>/*
+ *	clock_initialize_calendar:
+ *
+ *	Set the calendar and related clocks
+ *	from the platform clock at boot or
+ *	wake event.
+ *
+ *	Also sends host notifications.
+ */
+
+/*
+ *	clock_set_calendar_microtime:
+ *
+ *	Sets the current calendar value by
+ *	recalculating the epoch and offset
+ *	from the system clock.
+ *
+ *	Also adjusts the boottime to keep the
+ *	value consistent, writes the new
+ *	calendar value to the platform clock,
+ *	and sends calendar change notifications.
+ */
+</code></pre>
+
+<p>However it does <em>not</em> mention how far this behavior has existed, so older OS versions potentially don&#8217;t do the same thing (it works back to at least iOS 6). It is used in several place though, including by the <a href="http://opensource.apple.com/source/PowerManagement/PowerManagement-420.1.20/pmconfigd/pmconfigd.c">power management daemon</a> to re-sync the battery&#8217;s time remaining.</p>
+
+<p><a href="https://github.com/jmah/MyLilTimer">MyLilTimer</a> observes this one notification, checks the value of the corresponding clock, and resets an internal <code>NSTimer</code> to the new expiry date. Give it a go!</p>
+
+<div class="footnotes">
+  <ol>
+    <li id="fn:cpu-time">
+      <p>There is also <a href="http://en.wikipedia.org/wiki/CPU_time"><strong>CPU time</strong></a>, which is the time that a single CPU has been dedicated to a process. This is the &#8220;user&#8221; number when using <code>time</code> on the command-line. When a process runs for 1 second usilizing 75% of 4 cores, the CPU time is <code>1 * 0.75 * 4 = 3 core • seconds</code>. Since this has different units (not seconds), it is not a clock.<a href="#fnref:cpu-time" class="reversefootnote">&#8617;</a></p>
+    </li>
+    <li id="fn:unix-realtime">
+      <p>and Unix via <code>gettimeofday</code>, or <code>clock_gettime</code> with <code>CLOCK_REALTIME</code>.<a href="#fnref:unix-realtime" class="reversefootnote">&#8617;</a></p>
+    </li>
+    <li id="fn:ntp-clock-changing">
+      <p>When NTP synchronizes, it changes the system clock, <a href="http://www.ntp.org/ntpfaq/NTP-s-algo.htm#Q-CLOCK-DISCIPLINE">either instantly or slowly depending on the difference</a>.<a href="#fnref:ntp-clock-changing" class="reversefootnote">&#8617;</a></p>
+    </li>
+    <li id="fn:mach-absolute-time-units">
+      <p><a href="https://developer.apple.com/library/mac/qa/qa1398/_index.html">Technical Q&amp;A QA1398: Mach Absolute Time Units</a><a href="#fnref:mach-absolute-time-units" class="reversefootnote">&#8617;</a></p>
+    </li>
+    <li id="fn:sleep-wake">
+      <p><a href="https://developer.apple.com/library/mac/qa/qa1340/_index.html">Technical Q&amp;A QA1340: Registering and unregistering for sleep and wake notifications</a><a href="#fnref:sleep-wake" class="reversefootnote">&#8617;</a></p>
+    </li>
+  </ol>
+</div>
+
+	</div>
+</article>
+
+
+		<footer>
+			<p>dev etc is written by Jonathon Mah.<br>
+			Quine theme by Jonathon Mah.</p>
+			<ul class="contact">
+				<li>me <span>AT</span> JonathonMah.com</li>
+				<li><a href="https://github.com/jmah">github.com/jmah</a></li>
+				<li><a href="https://alpha.app.net/jmah">app.net/jmah</a></li>
+				<li><a href="https://twitter.com/dev_etc">twitter.com/dev_etc</a></li>
+			</ul>
+		</footer>
+
+	</body>
+</html>
