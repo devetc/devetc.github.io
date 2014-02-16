@@ -107,6 +107,12 @@ h6:after { content: "</h6>"; @include tag; }
 sup h6 { &:before, &:after { content: none; } }
 pre h6 { &:before, &:after { content: none; } }
 
+blockquote:before { content: "<blockquote>"; @include tag; }
+blockquote:after { content: "</blockquote>"; @include tag; }
+
+sup blockquote { &:before, &:after { content: none; } }
+pre blockquote { &:before, &:after { content: none; } }
+
 ul:before { content: "<ul>"; @include tag; }
 ul:after { content: "</ul>"; @include tag; }
 
