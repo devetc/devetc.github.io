@@ -4,7 +4,7 @@ title:  "Strong Feelings on Weak Outlets"
 date:   2014-02-16 11:02:56 -0800
 categories: code
 tags: cocoa interface-builder memory-management
-subtitle: Declare outlets as strong.
+subtitle: Declare IBOutlets as strong.
 ---
 
 There are mixed opinions on whether `IBOutlet` properties should be strong or weak.
