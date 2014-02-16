@@ -6,7 +6,7 @@
 		<title>{{ site.name }}{% if page.title %} : {{ page.title }}{% endif %}</title>
 		<meta name="viewport" content="width=device-width">
 
-		<link rel="alternate" type="application/rss+xml" title="dev etc" href="/rss.xml">
+		<link rel="alternate" type="application/rss+xml" title="dev etc" href="/feed.xml">
 
 		<!-- syntax highlighting CSS -->
 		<link rel="stylesheet" href="/css/syntax.css">
@@ -31,7 +31,7 @@
 
 		<header>
 			<h1><a href="/">{{ site.name }}</a></h1>
-			<div class="subtitle">Where mistakes go to die.</div>
+			<div class="subtitle">{{ site.description }}</div>
 		</header>
 
 		{{ content }}
