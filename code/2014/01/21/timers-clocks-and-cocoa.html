@@ -40,15 +40,21 @@
 	<div class="subtitle">Read me before using NSTimer.</div>
 
 	<div class="post">
-	<p>Time is a complicated thing (cf. relativity), yet it&#8217;s a vital part of programs interacting with the world.
-In casual conversation we usually speak as if there is one value called &#8220;the time&#8221;, which we can read from &#8220;the clock&#8221;.
-But because &#8220;the clock&#8221; can be changed by both the user and automatic time setting, we realize things  unfortunately cannot be not that simple.
-There are, in fact, multiple clocks.
-At first glance they all look like they run at the same rate and so it doesn&#8217;t appear important to choose one over another, but they have quite different behaviors and inevitably diverge over time.</p>
+	<p>Time is a complicated thing (cf. relativity), and it&#8217;s a vital part of programs interacting with the world.
+In casual conversation we usually speak as if there is a value called &#8220;the time&#8221;, which we can read from &#8220;the clock&#8221;.</p>
 
-<p>Choosing the wrong clock can make your software behave unexpectedly, and possibly crash.
-A lot of code makes incorrect assumptions about the real-time clock, and takes non-sensical actions if a time difference is negative.
-But because clock changes are uncommon, these bugs can appear to be <a href="http://en.wikipedia.org/wiki/Heisenbug">Heisenbugs</a>.</p>
+<p>But programming requires specifying things precisely.
+The measurement called &#8220;the clock&#8221; can be changed by the user, and by automatic time setting.
+If we were to use the value of this clock to determine whether an event occurred before or after another, things would occasionally seem crazy!</p>
+
+<p>When you change the clock on your computer or phone, things keep running pretty well.
+In well-written software, network requests don&#8217;t suddenly time out; transfer rates don&#8217;t become &#8220;−22 MB / second&#8221;; and the desktop doesn&#8217;t implode in a &#8220;general causality fault&#8221;.
+With so many things dependent on time, how does changing the clock not wreak havoc?</p>
+
+<p>There are, in fact, multiple clocks.
+At first glance they can all appear to run at the same rate, so it might not appear to matter which one you choose.
+But they have quite different behaviors, and inevitably diverge over time.
+Choosing the wrong clock can make your software behave unexpectedly, and possibly crash.</p>
 
 <p>As an application developer, these are the most useful clocks in practice<sup id="fnref:cpu-time"><a href="#fn:cpu-time" class="footnote">1</a></sup>:</p>
 
@@ -56,19 +62,20 @@ But because clock changes are uncommon, these bugs can appear to be <a href="htt
   <li>
     <p>The <strong>real-time clock</strong>, usually accessed in Cocoa via <code>NSDate</code>.<sup id="fnref:unix-realtime"><a href="#fn:unix-realtime" class="footnote">2</a></sup>
 This is the system&#8217;s best guess of <a href="http://en.wikipedia.org/wiki/UTC">coordinated universal time</a> (UTC).
-The user can change this clock arbitrarily, and the NTP (Network Time Protocol) serivce also makes changes as it tries to keep it in sync with an external reference.
+The user can change this clock arbitrarily, and the NTP (Network Time Protocol) service also makes changes as it tries to keep it in sync with an external reference.
+Almost all network-connected devices sync with an external source by default, via an Internet time server, <a href="http://en.wikipedia.org/wiki/Radio_clock#GPS_clocks">GPS</a>, or the phone network.
 While the value of this clock typically increases by 1 second per real second, at times it runs faster or slower, and makes discontinuous jumps both forwards and backwards.<sup id="fnref:ntp-clock-changing"><a href="#fn:ntp-clock-changing" class="footnote">3</a></sup></p>
   </li>
   <li>
     <p><strong>Monotonic time</strong> is basically a counter that gets incremented when a physical timer signals the CPU via a timer interrupt.
 On Mac OS X and iOS, the counter value is returned from <code>mach_absolute_time()</code>, and the number of counts per second is returned by <code>mach_timebase_info()</code>.<sup id="fnref:mach-absolute-time-units"><a href="#fn:mach-absolute-time-units" class="footnote">4</a></sup>
 Several functions include the conversion to seconds: <code>-[NSProcessInfo systemUptime]</code>, <code>CACurrentMediaTime()</code>, and others.
-The particular value of this counter isn&#8217;t really useful, but the difference between two readings tells you how much time has elapsed, regardless of any changes to the real-time clock.
+The particular value of this counter isn&#8217;t really useful because it&#8217;s reset on boot, but the difference between two readings tells you how much time has elapsed, regardless of any changes to the real-time clock.
 This is useful for measuring throughput, or processing speed, of some operation — numbers like &#8220;frames per second&#8221;.
-However since the CPU increments this counter, <em>the monotonic clock stops when the CPU is powered down</em>.</p>
+However since the CPU increments this counter, <em>the monotonic clock stops when the CPU is powered down</em> — which includes when the system is &#8220;&#8220;sleeping&#8221;.</p>
   </li>
   <li>
-    <p><strong>Boot time</strong>, which is like monotomic time but does not pause when the system goes to sleep.
+    <p><strong>Boot time</strong>, which is like monotonic time but does not pause when the system goes to sleep.
 This value is reported by the <code>uptime</code> tool.</p>
   </li>
 </ol>
@@ -85,13 +92,17 @@ This makes <code>NSTimer</code> <strong>incorrect for timeouts and timing</stron
 
 <p><img src="/assets/MyLilTimers-clock-values-over-time.svg" alt="Clock values over time" /></p>
 
-<p>For measuring durations without interference from real-time clock changes or system sleep, <strong>you need to use boot time</strong>. Unfortunately this is unreasonably difficult with Cocoa, so I wrote something: <a href="https://github.com/jmah/MyLilTimer">MyLilTimer</a> has an interface similar to <code>NSTimer</code>, but with the option of the three behaviors above. Because iOS suspends apps in the background, an app can often be notified of the firing of a timer significantly after it was scheduled to fire. The <code>-timeSinceFireDate</code> method returns that duration, using the clock selected by the timer.</p>
-
-<p>To make matters worse, iOS devices don&#8217;t go to sleep when plugged in — including when running an app from Xcode. So using <code>NSTimer</code> can appear to act like using boot time, until you run with the device unplugged!</p>
+<p>For measuring durations without interference from real-time clock changes or system sleep, <strong>you need to use boot time</strong> — which <code>NSTimer</code> does not provide.
+To make matters worse, iOS devices don&#8217;t go to sleep when plugged in, including when running an app from Xcode.
+So using <code>NSTimer</code> can appear to act like it&#8217;s using boot time, until you run with the device unplugged!</p>
 
 <p>The Cocoa frameworks do not offer any way to be notified of these time discontinuities in general. UIKit offers <code>UIApplicationSignificantTimeChangeNotification</code> which fires when the real-time clock changes (and a couple of other cases useful for calendar-type apps), but not when waking from sleep. On the Mac there is <code>NSWorkspaceDidWakeNotification</code>,<sup id="fnref:sleep-wake"><a href="#fn:sleep-wake" class="footnote">5</a></sup> but there is no (public) counterpart for iOS.</p>
 
-<p><code>dispatch_after</code> (and a timer <code>dispatch_source</code>) offers both the monotonic and real-time clock, depending on how the <code>dispatch_time</code> object is created. The boot time behavior is a combination of the two — run continuously during system clock changes (like the monotonic clock), and stay running during system sleep (like the real-time clock) — so we should be able to build our own. The <a href="http://opensource.apple.com/source/libdispatch/libdispatch-339.1.9/src/source.c">libdispatch source</a> observes the <code>HOST_NOTIFY_CALENDAR_CHANGE</code> Mach notification to reschedule real-time clock timers. The only form of documentation appears to be comments in the <a href="http://www.opensource.apple.com/source/xnu/xnu-2422.1.72/osfmk/kern/clock.c">kernel source</a>, which indeed indicates it&#8217;s sent when the real-time clock changes, as well as when the system is woken:</p>
+<p>GCD&#8217;s <code>dispatch_after</code> function (and the timer <code>dispatch_source</code>) allow creating timers with either the monotonic or real-time clock, depending on how the <code>dispatch_time</code> object is created.
+There isn&#8217;t an option to use the boot time clock.
+Because most other timers only use the monotonic clock, I got curious as to how real-time clock timers were implemented.
+The <a href="http://opensource.apple.com/source/libdispatch/libdispatch-339.1.9/src/source.c">libdispatch source</a> observes the <code>HOST_NOTIFY_CALENDAR_CHANGE</code> Mach notification to reschedule real-time clock timers.
+The only form of documentation appears to be comments in the <a href="http://www.opensource.apple.com/source/xnu/xnu-2422.1.72/osfmk/kern/clock.c">kernel source</a>, which indeed indicates it&#8217;s sent when the real-time clock changes, as well as when the system is woken:</p>
 
 <pre><code>/*
  *	clock_initialize_calendar:
@@ -119,7 +130,15 @@ This makes <code>NSTimer</code> <strong>incorrect for timeouts and timing</stron
 
 <p>However it does <em>not</em> mention how far this behavior has existed, so older OS versions potentially don&#8217;t do the same thing (it works back to at least iOS 6). It is used in several place though, including by the <a href="http://opensource.apple.com/source/PowerManagement/PowerManagement-420.1.20/pmconfigd/pmconfigd.c">power management daemon</a> to re-sync the battery&#8217;s time remaining.</p>
 
-<p><a href="https://github.com/jmah/MyLilTimer">MyLilTimer</a> observes this one notification, checks the value of the corresponding clock, and resets an internal <code>NSTimer</code> to the new expiry date. Give it a go!</p>
+<h2 id="myliltimer">MyLilTimer</h2>
+
+<p>Since this is all unreasonably difficult with Cocoa, I wrote something:
+<a href="https://github.com/jmah/MyLilTimer">MyLilTimer</a> has an interface similar to <code>NSTimer</code>, with the added option of using one of the three clocks above
+Additionally, because iOS suspends apps in the background (and now OS X too with &#8220;App Nap&#8221;), an app can often be notified of the firing of a timer significantly after it was scheduled to fire. The <code>-timeSinceFireDate</code> method returns that duration, using the clock selected by the timer.</p>
+
+<p><a href="https://github.com/jmah/MyLilTimer">MyLilTimer</a> observes the <code>HOST_NOTIFY_CALENDAR_CHANGE</code> kernel notification, checks the value of the corresponding clock, and resets an internal <code>NSTimer</code> to the new expiry date. Give it a go!</p>
+
+<p><strong>Thanks</strong> to <a href="https://twitter.com/wilshipley">Wil Shipley</a> for feedback on the early version of this.</p>
 
 <div class="footnotes">
   <ol>
