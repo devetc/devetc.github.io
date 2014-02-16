@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+	<channel>
+		<title>dev etc</title>
+		<description>Where mistakes go to die.</description>		
+		<link>http://devetc.org/</link>
+		<atom:link href="http://devetc.org/feed.xml" rel="self" type="application/rss+xml" />
+		
+			<item>
+				<title>Strong Feelings on Weak Outlets</title>
+				<description>&lt;p&gt;There are mixed opinions on whether &lt;code&gt;IBOutlet&lt;/code&gt; properties should be strong or weak.
+Apple themselves changed their recommendation with iOS 5.
+However their advice right now is bad — or at least poorly reasoned.
+The rest of the Cocoa guidelines and my own experience both lead me to the opposite conclusion: &lt;strong&gt;declare outlets as strong&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;To clarify, I&amp;#8217;m talking about outlets from controllers to views — outlets on &amp;#8220;File&amp;#8217;s Owner&amp;#8221;, often a &lt;code&gt;UIViewController&lt;/code&gt;, &lt;code&gt;NSViewController&lt;/code&gt;, or &lt;code&gt;NSWindowController&lt;/code&gt; instance.
+(And yes, &amp;#8220;owner&amp;#8221; does imply &amp;#8220;strong&amp;#8221;.)
+Outlets from views to controllers or other views — for example a table view subclass adding an &lt;code&gt;awesomeSource&lt;/code&gt; — should be weak.&lt;/p&gt;
+
+&lt;p&gt;Tedious analysis follows.&lt;/p&gt;
+
+&lt;h2 id=&quot;apples-reasons&quot;&gt;Apple&amp;#8217;s reasons&lt;/h2&gt;
+
+&lt;p&gt;Apple documents their recommendations in the &lt;a href=&quot;https://developer.apple.com/library/mac/documentation/cocoa/conceptual/loadingresources/CocoaNibs/CocoaNibs.html&quot;&gt;Resource Programming Guide: Nib Files&lt;/a&gt;:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Outlets should generally be &lt;code&gt;weak&lt;/code&gt;, except for those from File’s Owner to top-level objects in a nib file (or, in iOS, a storyboard scene) which should be &lt;code&gt;strong&lt;/code&gt;.
+Outlets that you create should therefore typically be &lt;code&gt;weak&lt;/code&gt;, because:&lt;/p&gt;
+
+  &lt;ul&gt;
+    &lt;li&gt;Outlets that you create to subviews of a view controller’s view or a window controller’s window, for example, are arbitrary references between objects that do not imply ownership.&lt;/li&gt;
+    &lt;li&gt;The strong outlets are frequently specified by framework classes (for example, &lt;code&gt;UIViewController&lt;/code&gt;’s view outlet, or &lt;code&gt;NSWindowController&lt;/code&gt;’s window outlet).&lt;/li&gt;
+  &lt;/ul&gt;
+
+  &lt;pre&gt;&lt;code&gt;@property (weak) IBOutlet MyView *viewContainerSubview;
+@property (strong) IBOutlet MyOtherClass *topLevelObject;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;But there are caveats to using weak:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Outlets should be changed to &lt;code&gt;strong&lt;/code&gt; when the outlet should be considered to own the referenced object:&lt;/p&gt;
+
+  &lt;ul&gt;
+    &lt;li&gt;As indicated previously, this is often the case with File’s Owner—top level objects in a nib file are frequently considered to be owned by the File’s Owner.&lt;/li&gt;
+    &lt;li&gt;You may in some situations need an object from a nib file to exist outside of its original container. For example, you might have an outlet for a view that can be temporarily removed from its initial view hierarchy and must therefore be maintained independently.&lt;/li&gt;
+  &lt;/ul&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;To summarize, the documentation says, &amp;#8220;use weak when you can, but it doesn&amp;#8217;t always work&amp;#8221;.
+If you do use weak references in the above cases, it will sometimes work (both &lt;code&gt;UIViewController&lt;/code&gt; and &lt;code&gt;NSViewController&lt;/code&gt; actually &lt;em&gt;do&lt;/em&gt; retain the top-level objects of a nib, but it&amp;#8217;s undocumented), and sometimes fail (removing a view from its superview, if that was the last strong reference).
+Oh, and remember to change them from &lt;code&gt;weak&lt;/code&gt; to &lt;code&gt;strong&lt;/code&gt; if the layout of the nib changes, or if you start doing something different with the connected objects.
+And remember to change them from &lt;code&gt;strong&lt;/code&gt; back to &lt;code&gt;weak&lt;/code&gt; because… well, &lt;strong&gt;why exactly&lt;/strong&gt;?&lt;/p&gt;
+
+&lt;p&gt;Each of the above reasons sounds like, &amp;#8220;some objects already have a retaining reference, so they &lt;strong&gt;shouldn&amp;#8217;t have&lt;/strong&gt; another&amp;#8221;, which is an argument against reference counting in favor of &lt;code&gt;malloc&lt;/code&gt;/&lt;code&gt;free&lt;/code&gt; semantics.&lt;/p&gt;
+
+&lt;p&gt;Consider a simple case:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;@interface ChooseOne : NSObject
+@property (nonatomic, strong) NSArray *options; // @[@&quot;one&quot;, @&quot;two&quot;, @&quot;three&quot;]
+@property (nonatomic, ?) NSString *selectedOption;
+@end
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The &lt;code&gt;options&lt;/code&gt; property indirectly holds a strong reference to all the options, so by the nib doc&amp;#8217;s first reason &lt;code&gt;selectedOption&lt;/code&gt; should be declared &lt;code&gt;weak&lt;/code&gt;.
+That could work, but it&amp;#8217;s overly fragile:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;If &lt;code&gt;selectedOption&lt;/code&gt; is set before &lt;code&gt;options&lt;/code&gt;, the value may or may not be nil.
+Even worse, the outcome could depend on the compiler&amp;#8217;s optimization setting:
+Everything could look fine in Debug, but fail in Release!&lt;/li&gt;
+  &lt;li&gt;There are values that compare equal but aren&amp;#8217;t identical, such that &lt;code&gt;[choice.options containsObject:opt]&lt;/code&gt; is true, but when stored in &lt;code&gt;selectedOption&lt;/code&gt; would silently be lost.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;The sane storage specifier for &lt;code&gt;selectedOption&lt;/code&gt; is at least &lt;code&gt;strong&lt;/code&gt; (&lt;code&gt;copy&lt;/code&gt; is even more appropriate).&lt;/p&gt;
+
+&lt;p&gt;The docs also convey the feeling that &lt;code&gt;weak&lt;/code&gt; is an optimization. With my memory-management goggles on, this is how I read the above:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Outlets that are connected to subviews are already retained by the top-level &lt;code&gt;view&lt;/code&gt; (or &lt;code&gt;window&lt;/code&gt;) outlet, so they &lt;strong&gt;shouldn&amp;#8217;t bother&lt;/strong&gt; with that retain/release stuff.&lt;/li&gt;
+  &lt;li&gt;The outlets that do need to do these &amp;#8220;heavy-weight&amp;#8221; retain/release calls are typically provided by the system.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;This is misleading, because accessing a &lt;code&gt;weak&lt;/code&gt; property is many times slower than a &lt;code&gt;strong&lt;/code&gt; one!
+All that&amp;#8217;s needed to access a &lt;code&gt;strong, nonatomic&lt;/code&gt; property is just to read and return the pointer value.&lt;sup id=&quot;fnref:objc-accessors&quot;&gt;&lt;a href=&quot;#fn:objc-accessors&quot; class=&quot;footnote&quot;&gt;1&lt;/a&gt;&lt;/sup&gt;
+Accessing a &lt;code&gt;weak, nonatomic&lt;/code&gt; property requires first testing that the object hasn&amp;#8217;t been marked as deallocated, then retaining and autoreleasing the value (otherwise the returned pointer may turn invalid at any time); and each part of this access requires locking.&lt;sup id=&quot;fnref:objc-loadWeak&quot;&gt;&lt;a href=&quot;#fn:objc-loadWeak&quot; class=&quot;footnote&quot;&gt;2&lt;/a&gt;&lt;/sup&gt;&lt;/p&gt;
+
+&lt;p&gt;The only reason in support of &lt;code&gt;weak&lt;/code&gt; outlets is that they don&amp;#8217;t require explicit clean-up when releasing the top-level view.
+But unloading the top-level view turned out to be difficult to get correct, difficult to test, and &lt;strong&gt;very difficult&lt;/strong&gt; to keep correct as the code changes.
+So Apple very practically decided to stop doing it as of iOS 6.&lt;sup id=&quot;fnref:wwdc-viewDidUnload&quot;&gt;&lt;a href=&quot;#fn:wwdc-viewDidUnload&quot; class=&quot;footnote&quot;&gt;3&lt;/a&gt;&lt;/sup&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;curiouser&quot;&gt;Curiouser&lt;/h2&gt;
+
+&lt;p&gt;At some point in 2011&lt;sup id=&quot;fnref:adc-nibs-revision-history&quot;&gt;&lt;a href=&quot;#fn:adc-nibs-revision-history&quot; class=&quot;footnote&quot;&gt;4&lt;/a&gt;&lt;/sup&gt;, the guidelines for iOS was changed from &lt;code&gt;strong&lt;/code&gt; to &lt;code&gt;weak&lt;/code&gt;.
+I&amp;#8217;d really like to know the history of this, because the reasons stated now were just as valid then.
+Perhaps there&amp;#8217;s some unstated reason?&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Prior to ARC, the rules for managing nib objects are different from those described above. How you manage the objects depends on the platform and on the memory model in use. Whichever platform you develop for, you should define outlets using the Objective-C declared properties feature.&lt;/p&gt;
+
+  &lt;p&gt;[&amp;#8230;]&lt;/p&gt;
+
+  &lt;ul&gt;
+    &lt;li&gt;For iOS, you should use:&lt;/li&gt;
+  &lt;/ul&gt;
+  &lt;pre&gt;&lt;code&gt;@property (nonatomic, retain) IBOutlet UserInterfaceElementClass *anOutlet;&lt;/code&gt;&lt;/pre&gt;
+
+  &lt;ul&gt;
+    &lt;li&gt;For OS X, you should use:&lt;/li&gt;
+  &lt;/ul&gt;
+  &lt;pre&gt;&lt;code&gt;@property (assign) IBOutlet UserInterfaceElementClass *anOutlet;&lt;/code&gt;&lt;/pre&gt;
+&lt;/blockquote&gt;
+
+&lt;h2 id=&quot;share-your-thoughts&quot;&gt;Share Your Thoughts&lt;/h2&gt;
+
+&lt;p&gt;Do you have strong feelings on this?
+Am I missing something mind-numbingly obvious?
+Shoot a Twitter-gram to the germinal &lt;a href=&quot;https://twitter.com/dev_etc&quot;&gt;@dev_etc&lt;/a&gt;, or an App.net-o-gram to &lt;a href=&quot;https://alpha.app.net/jmah&quot;&gt;@jmah&lt;/a&gt;&lt;/p&gt;
+
+&lt;div class=&quot;footnotes&quot;&gt;
+  &lt;ol&gt;
+    &lt;li id=&quot;fn:objc-accessors&quot;&gt;
+      &lt;p&gt;See the &lt;a href=&quot;http://www.opensource.apple.com/source/objc4/objc4-551.1/runtime/Accessors.subproj/objc-accessors.mm&quot;&gt;objc-accessors.mm source file&lt;/a&gt;&lt;a href=&quot;#fnref:objc-accessors&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:objc-loadWeak&quot;&gt;
+      &lt;p&gt;See &lt;code&gt;objc_loadWeak&lt;/code&gt; in clang&amp;#8217;s &lt;a href=&quot;http://clang.llvm.org/docs/AutomaticReferenceCounting.html#arc-runtime-objc-loadweak&quot;&gt;Automatic Reference Counting documentation&lt;/a&gt;.&lt;a href=&quot;#fnref:objc-loadWeak&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:wwdc-viewDidUnload&quot;&gt;
+      &lt;p&gt;See &lt;a href=&quot;https://developer.apple.com/videos/wwdc/2012/&quot;&gt;WWDC 2012&lt;/a&gt; Session 200: &amp;#8220;What&amp;#8217;s New in Cocoa Touch&amp;#8221;, 00:18:00 in.&lt;a href=&quot;#fnref:wwdc-viewDidUnload&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:adc-nibs-revision-history&quot;&gt;
+      &lt;p&gt;Actually 2011-10-12, thanks to the &lt;a href=&quot;https://developer.apple.com/library/mac/documentation/cocoa/conceptual/loadingresources/RevisionHistory.html#//apple_ref/doc/uid/20001604-CJBGIAGF&quot;&gt;revision history&lt;/a&gt;&lt;a href=&quot;#fnref:adc-nibs-revision-history&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+  &lt;/ol&gt;
+&lt;/div&gt;
+</description>
+				<pubDate>Sun, 16 Feb 2014 11:02:56 -0800</pubDate>
+				<link>http://devetc.org//code/2014/02/16/strong-feelings-on-weak-outlets.html</link>
+				<guid isPermaLink="true">http://devetc.org//code/2014/02/16/strong-feelings-on-weak-outlets.html</guid>
+			</item>
+		
+			<item>
+				<title>Timers, Clocks, and Cocoa</title>
+				<description>&lt;p&gt;Time is a complicated thing (cf. relativity), and it&amp;#8217;s a vital part of programs interacting with the world.
+In casual conversation we usually speak as if there is a value called &amp;#8220;the time&amp;#8221;, which we can read from &amp;#8220;the clock&amp;#8221;.&lt;/p&gt;
+
+&lt;p&gt;But programming requires specifying things precisely.
+The measurement called &amp;#8220;the clock&amp;#8221; can be changed by the user, and by automatic time setting.
+If we were to use the value of this clock to determine whether an event occurred before or after another, things would occasionally seem crazy!&lt;/p&gt;
+
+&lt;p&gt;When you change the clock on your computer or phone, things keep running pretty well.
+In well-written software, network requests don&amp;#8217;t suddenly time out; transfer rates don&amp;#8217;t become &amp;#8220;−22 MB / second&amp;#8221;; and the desktop doesn&amp;#8217;t implode in a &amp;#8220;general causality fault&amp;#8221;.
+With so many things dependent on time, how does changing the clock not wreak havoc?&lt;/p&gt;
+
+&lt;p&gt;There are, in fact, multiple clocks.
+At first glance they can all appear to run at the same rate, so it might not appear to matter which one you choose.
+But they have quite different behaviors, and inevitably diverge over time.
+Choosing the wrong clock can make your software behave unexpectedly, and possibly crash.&lt;/p&gt;
+
+&lt;p&gt;As an application developer, these are the most useful clocks in practice&lt;sup id=&quot;fnref:cpu-time&quot;&gt;&lt;a href=&quot;#fn:cpu-time&quot; class=&quot;footnote&quot;&gt;1&lt;/a&gt;&lt;/sup&gt;:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;The &lt;strong&gt;real-time clock&lt;/strong&gt;, usually accessed in Cocoa via &lt;code&gt;NSDate&lt;/code&gt;.&lt;sup id=&quot;fnref:unix-realtime&quot;&gt;&lt;a href=&quot;#fn:unix-realtime&quot; class=&quot;footnote&quot;&gt;2&lt;/a&gt;&lt;/sup&gt;
+This is the system&amp;#8217;s best guess of &lt;a href=&quot;http://en.wikipedia.org/wiki/UTC&quot;&gt;coordinated universal time&lt;/a&gt; (UTC).
+The user can change this clock arbitrarily, and the NTP (Network Time Protocol) service also makes changes as it tries to keep it in sync with an external reference.
+Almost all network-connected devices sync with an external source by default, via an Internet time server, &lt;a href=&quot;http://en.wikipedia.org/wiki/Radio_clock#GPS_clocks&quot;&gt;GPS&lt;/a&gt;, or the phone network.
+While the value of this clock typically increases by 1 second per real second, at times it runs faster or slower, and makes discontinuous jumps both forwards and backwards.&lt;sup id=&quot;fnref:ntp-clock-changing&quot;&gt;&lt;a href=&quot;#fn:ntp-clock-changing&quot; class=&quot;footnote&quot;&gt;3&lt;/a&gt;&lt;/sup&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;Monotonic time&lt;/strong&gt; is basically a counter that gets incremented when a physical timer signals the CPU via a timer interrupt.
+On Mac OS X and iOS, the counter value is returned from &lt;code&gt;mach_absolute_time()&lt;/code&gt;, and the number of counts per second is returned by &lt;code&gt;mach_timebase_info()&lt;/code&gt;.&lt;sup id=&quot;fnref:mach-absolute-time-units&quot;&gt;&lt;a href=&quot;#fn:mach-absolute-time-units&quot; class=&quot;footnote&quot;&gt;4&lt;/a&gt;&lt;/sup&gt;
+Several functions include the conversion to seconds: &lt;code&gt;-[NSProcessInfo systemUptime]&lt;/code&gt;, &lt;code&gt;CACurrentMediaTime()&lt;/code&gt;, and others.
+The particular value of this counter isn&amp;#8217;t really useful because it&amp;#8217;s reset on boot, but the difference between two readings tells you how much time has elapsed, regardless of any changes to the real-time clock.
+This is useful for measuring throughput, or processing speed, of some operation — numbers like &amp;#8220;frames per second&amp;#8221;.
+However since the CPU increments this counter, &lt;em&gt;the monotonic clock stops when the CPU is powered down&lt;/em&gt; — which includes when the system is &amp;#8220;&amp;#8220;sleeping&amp;#8221;.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;Boot time&lt;/strong&gt;, which is like monotonic time but does not pause when the system goes to sleep.
+This value is reported by the &lt;code&gt;uptime&lt;/code&gt; tool.&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;code&gt;NSTimer&lt;/code&gt; uses monotonic time. This means it pauses when the system goes to sleep, which happens unpredictably and opportunistically on iOS!
+This makes &lt;code&gt;NSTimer&lt;/code&gt; &lt;strong&gt;incorrect for timeouts and timing&lt;/strong&gt; involving anything external — from waiting for a server response to timing the cooking of an egg.
+&lt;code&gt;NSTimer&lt;/code&gt; is only appropriate if the process being timed is confined to the system — such as your app waiting for a result from the kernel, or another app.&lt;/p&gt;
+
+&lt;h2 id=&quot;pick-your-clock&quot;&gt;Pick your clock&lt;/h2&gt;
+
+&lt;iframe width=&quot;640&quot; height=&quot;360&quot; src=&quot;//www.youtube-nocookie.com/embed/ZRM8mq-ZSO0?rel=0&quot; frameborder=&quot;0&quot; allowfullscreen=&quot;&quot;&gt;&lt;/iframe&gt;
+
+&lt;p&gt;This chart lays out how the clock values change over time in the above video:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/MyLilTimers-clock-values-over-time.svg&quot; alt=&quot;Clock values over time&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;For measuring durations without interference from real-time clock changes or system sleep, &lt;strong&gt;you need to use boot time&lt;/strong&gt; — which &lt;code&gt;NSTimer&lt;/code&gt; does not provide.
+To make matters worse, iOS devices don&amp;#8217;t go to sleep when plugged in, including when running an app from Xcode.
+So using &lt;code&gt;NSTimer&lt;/code&gt; can appear to act like it&amp;#8217;s using boot time, until you run with the device unplugged!&lt;/p&gt;
+
+&lt;p&gt;The Cocoa frameworks do not offer any way to be notified of these time discontinuities in general. UIKit offers &lt;code&gt;UIApplicationSignificantTimeChangeNotification&lt;/code&gt; which fires when the real-time clock changes (and a couple of other cases useful for calendar-type apps), but not when waking from sleep. On the Mac there is &lt;code&gt;NSWorkspaceDidWakeNotification&lt;/code&gt;,&lt;sup id=&quot;fnref:sleep-wake&quot;&gt;&lt;a href=&quot;#fn:sleep-wake&quot; class=&quot;footnote&quot;&gt;5&lt;/a&gt;&lt;/sup&gt; but there is no (public) counterpart for iOS.&lt;/p&gt;
+
+&lt;p&gt;GCD&amp;#8217;s &lt;code&gt;dispatch_after&lt;/code&gt; function (and the timer &lt;code&gt;dispatch_source&lt;/code&gt;) allow creating timers with either the monotonic or real-time clock, depending on how the &lt;code&gt;dispatch_time&lt;/code&gt; object is created.
+There isn&amp;#8217;t an option to use the boot time clock.
+Because most other timers only use the monotonic clock, I got curious as to how real-time clock timers were implemented.
+The &lt;a href=&quot;http://opensource.apple.com/source/libdispatch/libdispatch-339.1.9/src/source.c&quot;&gt;libdispatch source&lt;/a&gt; observes the &lt;code&gt;HOST_NOTIFY_CALENDAR_CHANGE&lt;/code&gt; Mach notification to reschedule real-time clock timers.
+The only form of documentation appears to be comments in the &lt;a href=&quot;http://www.opensource.apple.com/source/xnu/xnu-2422.1.72/osfmk/kern/clock.c&quot;&gt;kernel source&lt;/a&gt;, which indeed indicates it&amp;#8217;s sent when the real-time clock changes, as well as when the system is woken:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;/*
+ *	clock_initialize_calendar:
+ *
+ *	Set the calendar and related clocks
+ *	from the platform clock at boot or
+ *	wake event.
+ *
+ *	Also sends host notifications.
+ */
+
+/*
+ *	clock_set_calendar_microtime:
+ *
+ *	Sets the current calendar value by
+ *	recalculating the epoch and offset
+ *	from the system clock.
+ *
+ *	Also adjusts the boottime to keep the
+ *	value consistent, writes the new
+ *	calendar value to the platform clock,
+ *	and sends calendar change notifications.
+ */
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;However it does &lt;em&gt;not&lt;/em&gt; mention how far this behavior has existed, so older OS versions potentially don&amp;#8217;t do the same thing (it works back to at least iOS 6). It is used in several place though, including by the &lt;a href=&quot;http://opensource.apple.com/source/PowerManagement/PowerManagement-420.1.20/pmconfigd/pmconfigd.c&quot;&gt;power management daemon&lt;/a&gt; to re-sync the battery&amp;#8217;s time remaining.&lt;/p&gt;
+
+&lt;h2 id=&quot;myliltimer&quot;&gt;MyLilTimer&lt;/h2&gt;
+
+&lt;p&gt;Since this is all unreasonably difficult with Cocoa, I wrote something:
+&lt;a href=&quot;https://github.com/jmah/MyLilTimer&quot;&gt;MyLilTimer&lt;/a&gt; has an interface similar to &lt;code&gt;NSTimer&lt;/code&gt;, with the added option of using one of the three clocks above
+Additionally, because iOS suspends apps in the background (and now OS X too with &amp;#8220;App Nap&amp;#8221;), an app can often be notified of the firing of a timer significantly after it was scheduled to fire. The &lt;code&gt;-timeSinceFireDate&lt;/code&gt; method returns that duration, using the clock selected by the timer.&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://github.com/jmah/MyLilTimer&quot;&gt;MyLilTimer&lt;/a&gt; observes the &lt;code&gt;HOST_NOTIFY_CALENDAR_CHANGE&lt;/code&gt; kernel notification, checks the value of the corresponding clock, and resets an internal &lt;code&gt;NSTimer&lt;/code&gt; to the new expiry date. Give it a go!&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Thanks&lt;/strong&gt; to &lt;a href=&quot;https://twitter.com/wilshipley&quot;&gt;Wil Shipley&lt;/a&gt; for feedback on the early version of this.&lt;/p&gt;
+
+&lt;div class=&quot;footnotes&quot;&gt;
+  &lt;ol&gt;
+    &lt;li id=&quot;fn:cpu-time&quot;&gt;
+      &lt;p&gt;There is also &lt;a href=&quot;http://en.wikipedia.org/wiki/CPU_time&quot;&gt;&lt;strong&gt;CPU time&lt;/strong&gt;&lt;/a&gt;, which is the time that a single CPU has been dedicated to a process. This is the &amp;#8220;user&amp;#8221; number when using &lt;code&gt;time&lt;/code&gt; on the command-line. When a process runs for 1 second utilizing 75% of 4 cores, the CPU time is &lt;code&gt;1 * 0.75 * 4 = 3 core • seconds&lt;/code&gt;. Since this has different units (not seconds), it is not a clock.&lt;a href=&quot;#fnref:cpu-time&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:unix-realtime&quot;&gt;
+      &lt;p&gt;and Unix via &lt;code&gt;gettimeofday&lt;/code&gt;, or &lt;code&gt;clock_gettime&lt;/code&gt; with &lt;code&gt;CLOCK_REALTIME&lt;/code&gt;.&lt;a href=&quot;#fnref:unix-realtime&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:ntp-clock-changing&quot;&gt;
+      &lt;p&gt;When NTP synchronizes, it changes the system clock, &lt;a href=&quot;http://www.ntp.org/ntpfaq/NTP-s-algo.htm#Q-CLOCK-DISCIPLINE&quot;&gt;either instantly or slowly depending on the difference&lt;/a&gt;.&lt;a href=&quot;#fnref:ntp-clock-changing&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:mach-absolute-time-units&quot;&gt;
+      &lt;p&gt;&lt;a href=&quot;https://developer.apple.com/library/mac/qa/qa1398/_index.html&quot;&gt;Technical Q&amp;amp;A QA1398: Mach Absolute Time Units&lt;/a&gt;&lt;a href=&quot;#fnref:mach-absolute-time-units&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:sleep-wake&quot;&gt;
+      &lt;p&gt;&lt;a href=&quot;https://developer.apple.com/library/mac/qa/qa1340/_index.html&quot;&gt;Technical Q&amp;amp;A QA1340: Registering and unregistering for sleep and wake notifications&lt;/a&gt;&lt;a href=&quot;#fnref:sleep-wake&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+  &lt;/ol&gt;
+&lt;/div&gt;
+</description>
+				<pubDate>Tue, 21 Jan 2014 13:03:49 -0800</pubDate>
+				<link>http://devetc.org//code/2014/01/21/timers-clocks-and-cocoa.html</link>
+				<guid isPermaLink="true">http://devetc.org//code/2014/01/21/timers-clocks-and-cocoa.html</guid>
+			</item>
+		
+	</channel>
+</rss>
