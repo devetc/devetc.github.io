@@ -108,7 +108,7 @@ Additionally, because iOS suspends apps in the background (and now OS X too wit
 [kern-clock.c]: http://www.opensource.apple.com/source/xnu/xnu-2422.1.72/osfmk/kern/clock.c
 [pmconfigd.c]: http://opensource.apple.com/source/PowerManagement/PowerManagement-420.1.20/pmconfigd/pmconfigd.c
 
-[^cpu-time]: There is also [**CPU time**][wiki-cpu-time], which is the time that a single CPU has been dedicated to a process. This is the "user" number when using `time` on the command-line. When a process runs for 1 second usilizing 75% of 4 cores, the CPU time is `1 * 0.75 * 4 = 3 core • seconds`. Since this has different units (not seconds), it is not a clock.
+[^cpu-time]: There is also [**CPU time**][wiki-cpu-time], which is the time that a single CPU has been dedicated to a process. This is the "user" number when using `time` on the command-line. When a process runs for 1 second utilizing 75% of 4 cores, the CPU time is `1 * 0.75 * 4 = 3 core • seconds`. Since this has different units (not seconds), it is not a clock.
 
 [^unix-realtime]: and Unix via `gettimeofday`, or `clock_gettime` with `CLOCK_REALTIME`.
 
