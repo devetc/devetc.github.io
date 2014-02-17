@@ -161,9 +161,9 @@ $code_background: #efefff;
 	}
 
 	blockquote {
-		margin: 0.5em 2em;
-		background: #fcfcfc;
-		color: #363636;
+		margin: 0.5em;
+		border-left: 6pt solid #ddd;
+		padding: 0 1em;
 	}
 
 	ul, ol {
