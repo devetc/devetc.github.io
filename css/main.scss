@@ -159,7 +159,6 @@ $code_background: #efefff;
 		border: 1px solid #ddd;
 		background-color: $code_background;
 		padding: 0 .4em;
-		font-size: 80%;
 		line-height: 1.25em;
 	}
 
@@ -176,6 +175,7 @@ $code_background: #efefff;
 	code {
 		border: 1px solid #ddd;
 		background-color: $code_background;
+		font-size: 85%;
 		padding: 0 .2em;
 	}
 
