@@ -274,8 +274,7 @@ If you implement a method from a protocol conformed to by a superclass, call sup
 @end
 
 @implementation MyViewControllerSubclass
-- (NSInteger)numberOfSectionsInCollectionView:(UICollectionView *)collectionView
-{
+- (NSInteger)numberOfSectionsInCollectionView:(UICollectionView *)collectionView {
     // Optional method. Super may not implement, must check.
     NSInteger baseSections = 1;
     if ([[MyViewControllerSubclass superclass] instancesRespondToSelector:_cmd]) {
@@ -284,8 +283,7 @@ If you implement a method from a protocol conformed to by a superclass, call sup
     return baseSections + 1;
 }
 
-- (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section
-{
+- (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
     // Required method, just call super.
     if (section == (collectionView.numberOfSections - 1)) {
         return 1;
@@ -300,8 +298,7 @@ With [MyLilHelper][my-lil-helpers]'s `_definingClass` macro, checking super does
 
 {% highlight objc %}
 @implementation MyViewControllerSubclass
-- (NSInteger)numberOfSectionsInCollectionView:(UICollectionView *)collectionView
-{
+- (NSInteger)numberOfSectionsInCollectionView:(UICollectionView *)collectionView {
     // Optional method. Super may not implement, must check.
     NSInteger baseSections = 1;
     if ([[_definingClass superclass] instancesRespondToSelector:_cmd]) {
