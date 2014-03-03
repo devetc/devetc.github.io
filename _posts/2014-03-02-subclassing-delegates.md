@@ -205,7 +205,7 @@ I've done that in the [MyLilHelpers][my-lil-helpers] project, called `_definingC
 Using this, we can create a copy-and-paste snippet:
 `[[_definingClass superclass] instancesRespondToSelector:_cmd]`.
 
-You now know how to subclass a delegate properly!
+**Congratulations**, you now know how to subclass a delegate properly!
 
 
 ## Curious UITableViewController behavior
