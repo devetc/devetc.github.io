@@ -159,6 +159,11 @@ $code_background: #efefff;
 		background: none;
 	}
 
+	div.highlight:before,
+	div.highlight:after {
+		content: none;
+	}
+
 	pre {
 		border: 1px solid #ddd;
 		background-color: $code_background;
