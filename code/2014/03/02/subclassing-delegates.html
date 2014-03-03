@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+		<title>dev etc : Subclassing Delegates</title>
+		<meta name="viewport" content="width=device-width">
+
+		<link rel="alternate" type="application/rss+xml" title="dev etc" href="/feed.xml">
+
+		<!-- syntax highlighting CSS -->
+		<link rel="stylesheet" href="/css/syntax.css">
+
+		<!-- Custom CSS -->
+		<link rel="stylesheet" href="/css/main.css">
+		<link rel="stylesheet" href="/css/quine.css">
+
+		<!-- Footnotes -->
+		<script src="/js/inline-footnotes.js"></script>
+
+		<!-- Google Analytics -->
+		<script>
+		(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+		(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+		m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+		})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+		ga('create', 'UA-44839563-1', 'devetc.org');
+		ga('send', 'pageview');
+		</script>
+
+	</head>
+	<body>
+
+		<header>
+			<h1><a href="/">dev etc</a></h1>
+			<div class="subtitle">Where mistakes go to die.</div>
+		</header>
+
+		<article>
+	<div class="post-date">Sunday, 2014-03-02</div>
+	<h1>Subclassing Delegates</h1>
+	<div class="subtitle">List delegates in your interface, and correctly call super.</div>
+
+	<div class="post">
+	<p><strong>tl;dr:</strong> Quickly looking for the right way to subclass delegates?
+Jump to the <a href="#summary-and-code-snippets">Summary and Code Snippets</a>.</p>
+
+<p>The delegation pattern is widely used throughout the Cocoa frameworks, for good reason. A delegate customizes another object&#8217;s behavior in a lightweight way, with less coupling than a subclass.
+A single object can be the delegate of several others, so a set of controls presented to the user as a logical group (say, a table and some text fields) can be managed by code that&#8217;s also kept together.<sup id="fnref:massive-view-controller"><a href="#fn:massive-view-controller" class="footnote">1</a></sup></p>
+
+<h2 id="interface-or-implementation">Interface or implementation?</h2>
+
+<p>List delegate protocols in the public interface of a class.</p>
+
+<p>Let&#8217;s consider a chain of three classes: <code>SpecificViewController : BaseViewController : UIViewController</code>. <code>BaseViewController</code> contains behavior common to several views of our app, and has several subclasses, including <code>SpecificViewController</code>. This behavior includes managing a <code>UITextField</code>, and so it conforms to the <code>&lt;UITextFieldDelegate&gt;</code> protocol.</p>
+
+<p>Objective-C 2.0 added the ability to declare protocols in a class&#8217;s implementation, like this:</p>
+
+<h4 id="baseviewcontrollerh">BaseViewController.h</h4>
+
+<div class="highlight"><pre><code class="objc"><span class="k">@interface</span> <span class="nc">BaseViewController</span> : <span class="nc">UIViewController</span>
+<span class="k">@end</span>
+</code></pre></div>
+
+<h4 id="baseviewcontrollerm">BaseViewController.m</h4>
+
+<div class="highlight"><pre><code class="objc"><span class="cp">#import &quot;BaseViewController.h&quot;</span>
+<span class="k">@interface</span> <span class="nc">BaseViewController</span> <span class="p">()</span> <span class="o">&lt;</span><span class="n">UITextFieldDelegate</span><span class="o">&gt;</span>
+<span class="k">@property</span> <span class="p">(</span><span class="n">nonatomic</span><span class="p">)</span> <span class="kt">IBOutlet</span> <span class="n">UITextField</span> <span class="o">*</span><span class="n">baseTextField</span><span class="p">;</span>
+<span class="k">@end</span>
+
+<span class="k">@implementation</span> <span class="nc">BaseViewController</span>
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">textFieldDidEndEditing:</span><span class="p">(</span><span class="n">UITextField</span> <span class="o">*</span><span class="p">)</span><span class="nv">textField</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">textField</span> <span class="o">==</span> <span class="n">self</span><span class="p">.</span><span class="n">baseTextField</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">NSLog</span><span class="p">(</span><span class="s">@&quot;%s with %@&quot;</span><span class="p">,</span> <span class="n">__func__</span><span class="p">,</span> <span class="n">textField</span><span class="p">.</span><span class="n">text</span><span class="p">);</span>
+        <span class="c1">// ...</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+<span class="k">@end</span>
+</code></pre></div>
+
+<p>At first glance this seems like a good approach, and makes our encapsulation senses tingle with joy.
+But it has problems.</p>
+
+<p>Someone else on the team is working on a subclass, <code>SpecificViewController</code>, which needs an extra text field. So it also conforms to <code>&lt;UITextFieldDelegate&gt;</code>:</p>
+
+<h4 id="specificviewcontrollerm">SpecificViewController.m</h4>
+
+<div class="highlight"><pre><code class="objc"><span class="cp">#import &quot;SpecificViewController.h&quot;</span>
+<span class="k">@interface</span> <span class="nc">SpecificViewController</span> <span class="p">()</span> <span class="o">&lt;</span><span class="n">UITextFieldDelegate</span><span class="o">&gt;</span>
+<span class="k">@property</span> <span class="p">(</span><span class="n">nonatomic</span><span class="p">)</span> <span class="kt">IBOutlet</span> <span class="n">UITextField</span> <span class="o">*</span><span class="n">secondTextField</span><span class="p">;</span>
+<span class="k">@end</span>
+
+<span class="k">@implementation</span> <span class="nc">SpecificViewController</span>
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">textFieldDidEndEditing:</span><span class="p">(</span><span class="n">UITextField</span> <span class="o">*</span><span class="p">)</span><span class="nv">textField</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">textField</span> <span class="o">==</span> <span class="n">self</span><span class="p">.</span><span class="n">secondTextField</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// ...</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+<span class="k">@end</span>
+</code></pre></div>
+
+<p>Have you noticed the problem? The behavior attached to <code>baseTextField</code> has silently been lost!
+The subclass hasn&#8217;t called super, but calling super would generate a compiler warning, because the protocol was listed in the superclass&#8217;s private implementation and not public interface.</p>
+
+<p>The solution to this is to <strong>declare delegate protocol conformance in a class&#8217;s public interface</strong>, and <strong>call super from overridden delegate methods</strong>.
+Declaring protocol conformance in the implementation is therefore often inappropriate.</p>
+
+<p>However, there&#8217;s another complication.</p>
+
+<h2 id="forwarding-optional-methods">Forwarding optional methods</h2>
+
+<p>Cocoa delegate protocols<sup id="fnref:delegate-protocols"><a href="#fn:delegate-protocols" class="footnote">2</a></sup> have the slightly unusual feature of optional methods.
+This speeds up prototyping and development — just implement what you want to use — but interacts with subclassing in a subtle way.</p>
+
+<p>Many delegate methods are <code>@optional</code>.
+Before calling one, you&#8217;re responsible for checking whether it&#8217;s available; the compiler doesn&#8217;t do any checking.
+(It&#8217;s similar to pointers: the compiler allows you to dereference any address, and your code is responsible for at least ensuring it&#8217;s not <code>NULL</code>.)</p>
+
+<p>We&#8217;ve moved the delegate protocol into the <code>BaseViewController.h</code> header file.
+Now subclasses can know that the superclass cares about the protocol, so they should forward the methods.
+Let&#8217;s adjust <code>SpecificViewController.m</code>:</p>
+
+<h4 id="specificviewcontrollerm-1">SpecificViewController.m</h4>
+
+<div class="highlight"><pre><code class="objc"><span class="k">@implementation</span> <span class="nc">SpecificViewController</span>
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">textFieldDidEndEditing:</span><span class="p">(</span><span class="n">UITextField</span> <span class="o">*</span><span class="p">)</span><span class="nv">textField</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">textField</span> <span class="o">==</span> <span class="n">self</span><span class="p">.</span><span class="n">secondTextField</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// ...</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="p">[</span><span class="n">super</span> <span class="n">textFieldDidEndEditing</span><span class="o">:</span><span class="n">textField</span><span class="p">];</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+<span class="k">@end</span>
+</code></pre></div>
+
+<p>Looks good, works great.
+But <code>secondTextField</code> needs some more behavior, so it adds another delegate method:</p>
+
+<div class="highlight"><pre><code class="objc"><span class="k">@implementation</span> <span class="nc">SpecificViewController</span>
+<span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">textFieldDidEndEditing:</span><span class="p">(</span><span class="n">UITextField</span> <span class="o">*</span><span class="p">)</span><span class="nv">textField</span> <span class="p">{</span>
+    <span class="c1">// ... as above</span>
+<span class="p">}</span>
+
+<span class="k">-</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">textFieldShouldClear:</span><span class="p">(</span><span class="n">UITextField</span> <span class="o">*</span><span class="p">)</span><span class="nv">textField</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">textField</span> <span class="o">==</span> <span class="n">self</span><span class="p">.</span><span class="n">secondTextField</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">self</span> <span class="n">someConditionIsMet</span><span class="p">];</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">super</span> <span class="n">textFieldShouldClear</span><span class="o">:</span><span class="n">textField</span><span class="p">];</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+<span class="k">@end</span>
+</code></pre></div>
+
+<p>We try it out, it works as expected.
+But then someone presses the &#8220;clear&#8221; button in <code>baseTextField</code>, and&#8230; <em>crash!</em></p>
+
+<p><code>-textFieldShouldClear:</code> is an optional method in <code>&lt;UITextFieldDelegate&gt;</code>, so the onus is on the caller to check if it&#8217;s safe to call — in this case, it&#8217;s not.
+So how can we check?</p>
+
+<h3 id="look-through-the-source-code-of-all-superclasses">1. Look through the source code of all superclasses.</h3>
+
+<p>We see that <code>BaseViewController</code> doesn&#8217;t implement this method, so we can remove the call to super.
+But then if it ever adds it, the behavior will be silently lost again!
+With this approach, adding or removing a delegate method requires auditing all superclasses and all subclasses — <strong>not a scalable solution</strong>.</p>
+
+<p>Worse: If you miss something, the code will still compile and run.
+Everything will likely look fine on the surface, but have a bug lurking below.</p>
+
+<h3 id="respondstoselector-of-course">2. <code>-respondsToSelector:</code>, of course</h3>
+
+<p>When we implement an object that takes its own delegate, the rule is easy:
+Guard all calls to <code>@optional</code> methods by <code>-respondsToSelector:</code>, like this:</p>
+
+<div class="highlight"><pre><code class="objc"><span class="k">-</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">canBecomeFirstResponder</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">([</span><span class="n">self</span><span class="p">.</span><span class="n">delegate</span> <span class="n">respondsToSelector</span><span class="o">:</span><span class="k">@selector</span><span class="p">(</span><span class="n">myControlCanBecomeFirstResponder</span><span class="o">:</span><span class="p">)])</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">delegate</span> <span class="n">myControlCanBecomeFirstResponder</span><span class="o">:</span><span class="n">self</span><span class="p">];</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nb">YES</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>Inside <code>-[SpecificViewController textFieldShouldClear:]</code> the selector we want to check is the same as the method we&#8217;re in, so we can just refer to it as <code>_cmd</code>.<sup id="fnref:_cmd-arg"><a href="#fn:_cmd-arg" class="footnote">3</a></sup>
+Now obviously <code>[self respondsToSelector:_cmd]</code> will return true, because we&#8217;re in that very method right now.
+So does <code>[super respondsToSelector:_cmd]</code> perform the check we want?</p>
+
+<p><strong>No.</strong>
+The quick-and-dirty translation into English reads, &#8220;ask super if it responds to the selector in <code>_cmd</code>,&#8221; but that&#8217;s wrong and misleading.</p>
+
+<p>We need to think more precisely about what the <code>super</code> call <em>actually</em> means.
+Which is, &#8220;call the superclass&#8217;s implementation of <code>-respondsToSelector:</code>, passing it <code>_cmd</code>&#8221;.
+Laid out like this, the behavior is clear:
+<code>SpecificViewController</code> hasn&#8217;t overridden <code>-respondsToSelector:</code>, which means <code>[self respondsToSelector:]</code> and <code>[super respondsToSelector:]</code> are exactly equivalent, both most likely using <code>NSObject</code>&#8217;s implementation.</p>
+
+<h3 id="instancesrespondtoselector-nice-to-meet-you">3. <code>+instancesRespondToSelector:</code>, nice to meet you</h3>
+
+<p>This is an oft forgotten <code>NSObject</code> method which does exactly as it sounds: performs <code>-respondsToSelector:</code>, but at the class level.</p>
+
+<p>So we can do this:</p>
+
+<div class="highlight"><pre><code class="objc"><span class="k">@implementation</span> <span class="nc">SpecificViewController</span>
+<span class="k">-</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">textFieldShouldClear:</span><span class="p">(</span><span class="n">UITextField</span> <span class="o">*</span><span class="p">)</span><span class="nv">textField</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">textField</span> <span class="o">==</span> <span class="n">self</span><span class="p">.</span><span class="n">secondTextField</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">self</span> <span class="n">someConditionIsMet</span><span class="p">];</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">([</span><span class="n">BaseViewController</span> <span class="n">instancesRespondToSelector</span><span class="o">:</span><span class="n">_cmd</span><span class="p">])</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">super</span> <span class="n">textFieldShouldClear</span><span class="o">:</span><span class="n">textField</span><span class="p">];</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nb">YES</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+<span class="k">@end</span>
+</code></pre></div>
+
+<p><strong>This is correct!</strong>
+Note that we also had to hard-code the default value in case the superclass doesn&#8217;t respond.<sup id="fnref:delegate-default-value"><a href="#fn:delegate-default-value" class="footnote">4</a></sup></p>
+
+<p>It&#8217;s ugly to hard-code the superclass in there like that, so how about <code>[[[self class] superclass] instancesRespondToSelector:_cmd]</code>?
+This <em>feels like</em> it should be the same, but it&#8217;s booby-trapped!
+When someone else comes along and declares another subclass, <code>EvenMoreSpecificViewController : SpecificViewController</code>, then <code>[self class]</code> is <code>EvenMoreSpecificViewController</code> and <code>[[self class] superclass]</code> is <code>SpecificViewController</code>.
+That check would succeed, there&#8217;d be a call to super (<code>BaseViewController</code>), then a crash.
+So nope.</p>
+
+<p>It&#8217;s slightly cleaner is to use the defining class: <code>[[SpecificViewController superclass] instancesRespondToSelector:_cmd]</code>.
+This adds safety in case a class ever gets split into two, changing the superclass.
+But it&#8217;s still an absolute reference, so the code isn&#8217;t a nice cut-and-paste snippet.</p>
+
+<p>It&#8217;d be nice to have a way to reference the defining class — like the <code>__FILE__</code> macro but for the current <code>@implementation</code>.
+Although there&#8217;s nothing built-in, it&#8217;s possible to add with a macro (though less efficiently than one provided by the compiler).
+I&#8217;ve done that in the <a href="https://github.com/jmah/MyLilHelpers">MyLilHelpers</a> project, called <code>_definingClass</code>.
+Using this, we can create a copy-and-paste snippet:
+<code>[[_definingClass superclass] instancesRespondToSelector:_cmd]</code>.</p>
+
+<p>You now know how to subclass a delegate properly!</p>
+
+<h2 id="curious-uitableviewcontroller-behavior">Curious UITableViewController behavior</h2>
+
+<p>I was initially planning on using <code>UITableViewController</code> for this posts&#8217;s example because it&#8217;s commonly subclassed, and conforms to both <code>&lt;UITableViewDataSource&gt;</code> and <code>&lt;UITableViewDelegate&gt;</code>.
+I fired up the inquisitive Cocoa developer&#8217;s best friend, <a href="http://www.hopperapp.com/">Hopper Disassembler</a>, to see which of the optional methods it implemented.
+To my surprise, I found it&#8217;s more complicated than that.</p>
+
+<p><code>UITableViewController</code> plays games with <code>respondsToSelector:</code>.</p>
+
+<div class="highlight"><pre><code class="objc"><span class="kt">SEL</span> <span class="n">sel</span> <span class="o">=</span> <span class="k">@selector</span><span class="p">(</span><span class="n">tableView</span><span class="o">:</span><span class="n">heightForRowAtIndexPath</span><span class="o">:</span><span class="p">);</span>
+<span class="p">[</span><span class="n">UITableViewController</span> <span class="n">instancesRespondToSelector</span><span class="o">:</span><span class="n">sel</span><span class="p">];</span> <span class="c1">// returns YES</span>
+<span class="p">[[[</span><span class="n">UITableViewController</span> <span class="n">alloc</span><span class="p">]</span> <span class="n">init</span><span class="p">]</span> <span class="n">respondsToSelector</span><span class="o">:</span><span class="n">sel</span><span class="p">];</span> <span class="c1">// returns NO!</span>
+</code></pre></div>
+
+<p>Since this is exceptional behavior, I had to choose a different example.</p>
+
+<p>The reason for this is to support the &#8220;static data source&#8221; mode which can be set up in storyboards<sup id="fnref:static-storyboards"><a href="#fn:static-storyboards" class="footnote">5</a></sup> with Interface Builder.
+<code>UITableViewController</code> overrides <code>-respondsToSelector:</code> to check if its <code>_staticDataSource</code> is nil, and then returns <code>NO</code> for a bunch of these methods — but only if they haven&#8217;t been overridden by a subclass.
+As of the iOS 7.0 SDK these methods are:</p>
+
+<ul>
+  <li><code>tableView:titleForHeaderInSection:</code></li>
+  <li><code>tableView:titleForFooterInSection:</code></li>
+  <li><code>tableView:heightForHeaderInSection:</code></li>
+  <li><code>tableView:heightForFooterInSection:</code></li>
+  <li><code>tableView:viewForHeaderInSection:</code></li>
+  <li><code>tableView:viewForFooterInSection:</code></li>
+  <li><code>tableView:heightForRowAtIndexPath:</code></li>
+  <li><code>tableView:indentationLevelForRowAtIndexPath:</code></li>
+</ul>
+
+<p>There&#8217;s actually no harm in calling these without a static data source, so the above solutoion still works for <code>UITableViewController</code> subclasses.</p>
+
+<p>But what if you <em>really really</em> want to know what <code>UITableViewController</code> <strong>would</strong> have returned?
+If this were <a href="https://mikeash.com/pyblog/">Mike Ash&#8217;s blog</a>, there&#8217;d now be an in-depth examination on using <code>object_setClass</code>.
+But it&#8217;s not, so I&#8217;ll just leave you with this snippet:<sup id="fnref:objc-runtime-header"><a href="#fn:objc-runtime-header" class="footnote">6</a></sup></p>
+
+<div class="highlight"><pre><code class="objc"><span class="k">-</span> <span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nf">tableView:</span><span class="p">(</span><span class="n">UITableView</span> <span class="o">*</span><span class="p">)</span><span class="nv">tableView</span> <span class="nf">titleForHeaderInSection:</span><span class="p">(</span><span class="n">NSInteger</span><span class="p">)</span><span class="nv">section</span> <span class="p">{</span>
+    <span class="kt">Class</span> <span class="n">orig</span> <span class="o">=</span> <span class="n">object_getClass</span><span class="p">(</span><span class="n">self</span><span class="p">);</span>
+    <span class="n">object_setClass</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="p">[</span><span class="n">UITableViewController</span> <span class="n">class</span><span class="p">]);</span>
+    <span class="kt">BOOL</span> <span class="n">superWouldRespond</span> <span class="o">=</span> <span class="p">[</span><span class="n">self</span> <span class="n">respondsToSelector</span><span class="o">:</span><span class="n">_cmd</span><span class="p">];</span>
+    <span class="n">object_setClass</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">orig</span><span class="p">);</span>
+    <span class="c1">// ...</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>I love the power of Objective-C.
+Just to be clear, <strong>don&#8217;t do this!</strong> Here be dragons.</p>
+
+<h2 id="summary-and-code-snippets">Summary and Code Snippets</h2>
+
+<p>Specify delegate protocols in the public interface of a class.</p>
+
+<div class="highlight"><pre><code class="objc"><span class="k">@interface</span> <span class="nc">MyViewController</span> : <span class="nc">UIViewController</span> <span class="o">&lt;</span><span class="n">UICollectionViewDataSource</span><span class="o">&gt;</span>
+<span class="k">@end</span>
+</code></pre></div>
+
+<p>If you implement a method from a protocol conformed to by a superclass, call super.</p>
+
+<div class="highlight"><pre><code class="objc"><span class="k">@interface</span> <span class="nc">MyViewControllerSubclass</span> : <span class="nc">MyViewController</span>
+<span class="c1">// adds a section to the collection view</span>
+<span class="k">@end</span>
+
+<span class="k">@implementation</span> <span class="nc">MyViewControllerSubclass</span>
+<span class="k">-</span> <span class="p">(</span><span class="n">NSInteger</span><span class="p">)</span><span class="nf">numberOfSectionsInCollectionView:</span><span class="p">(</span><span class="n">UICollectionView</span> <span class="o">*</span><span class="p">)</span><span class="nv">collectionView</span>
+<span class="p">{</span>
+    <span class="c1">// Optional method. Super may not implement, must check.</span>
+    <span class="n">NSInteger</span> <span class="n">baseSections</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">([[</span><span class="n">MyViewControllerSubclass</span> <span class="n">superclass</span><span class="p">]</span> <span class="n">instancesRespondToSelector</span><span class="o">:</span><span class="n">_cmd</span><span class="p">])</span> <span class="p">{</span>
+        <span class="n">baseSections</span> <span class="o">=</span> <span class="p">[</span><span class="n">super</span> <span class="n">numberOfSectionsInCollectionView</span><span class="o">:</span><span class="n">collectionView</span><span class="p">];</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">baseSections</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">-</span> <span class="p">(</span><span class="n">NSInteger</span><span class="p">)</span><span class="nf">collectionView:</span><span class="p">(</span><span class="n">UICollectionView</span> <span class="o">*</span><span class="p">)</span><span class="nv">collectionView</span> <span class="nf">numberOfItemsInSection:</span><span class="p">(</span><span class="n">NSInteger</span><span class="p">)</span><span class="nv">section</span>
+<span class="p">{</span>
+    <span class="c1">// Required method, just call super.</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">section</span> <span class="o">==</span> <span class="p">(</span><span class="n">collectionView</span><span class="p">.</span><span class="n">numberOfSections</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">super</span> <span class="n">collectionView</span><span class="o">:</span><span class="n">collectionView</span> <span class="n">numberOfItemsInSection</span><span class="o">:</span><span class="n">section</span><span class="p">];</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+<span class="k">@end</span>
+</code></pre></div>
+
+<p>With <a href="https://github.com/jmah/MyLilHelpers">MyLilHelper</a>&#8217;s <code>_definingClass</code> macro, checking super doesn&#8217;t require specifying the class:</p>
+
+<div class="highlight"><pre><code class="objc"><span class="k">@implementation</span> <span class="nc">MyViewControllerSubclass</span>
+<span class="k">-</span> <span class="p">(</span><span class="n">NSInteger</span><span class="p">)</span><span class="nf">numberOfSectionsInCollectionView:</span><span class="p">(</span><span class="n">UICollectionView</span> <span class="o">*</span><span class="p">)</span><span class="nv">collectionView</span>
+<span class="p">{</span>
+    <span class="c1">// Optional method. Super may not implement, must check.</span>
+    <span class="n">NSInteger</span> <span class="n">baseSections</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">([[</span><span class="n">_definingClass</span> <span class="n">superclass</span><span class="p">]</span> <span class="n">instancesRespondToSelector</span><span class="o">:</span><span class="n">_cmd</span><span class="p">])</span> <span class="p">{</span>
+        <span class="n">baseSections</span> <span class="o">=</span> <span class="p">[</span><span class="n">super</span> <span class="n">numberOfSectionsInCollectionView</span><span class="o">:</span><span class="n">collectionView</span><span class="p">];</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">baseSections</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="k">@end</span>
+</code></pre></div>
+
+<div class="footnotes">
+  <ol>
+    <li id="fn:massive-view-controller">
+      <p>Of course, over time a controller can get overgrown with many independent delegate responsibilities. For practical advice on managing this in iOS, see the <a href="http://www.objc.io/issue-1/">objc.io issue on Lighter View Controllers</a>.<a href="#fnref:massive-view-controller" class="reversefootnote">&#8617;</a></p>
+    </li>
+    <li id="fn:delegate-protocols">
+      <p>Delegates have almost all switched over to fully-fledged Objective-C <code>@protocol</code>s. In the olden days they were declared as un-implemented categories on <code>NSObject</code>, but still called &#8220;informal protocols&#8221;.<a href="#fnref:delegate-protocols" class="reversefootnote">&#8617;</a></p>
+    </li>
+    <li id="fn:_cmd-arg">
+      <p><code>_cmd</code> is like <code>self</code>, but references the selector instead of the receiver. See <a href="https://developer.apple.com/library/mac/documentation/cocoa/conceptual/ObjCRuntimeGuide/Articles/ocrtHowMessagingWorks.html#//apple_ref/doc/uid/TP40008048-CH104-TPXREF134">Objective-C Runtime Programming Guide: Using Hidden Arguments</a>.<a href="#fnref:_cmd-arg" class="reversefootnote">&#8617;</a></p>
+    </li>
+    <li id="fn:delegate-default-value">
+      <p>The default for delegate methods that have a return value is usually in the documentation. However some methods, like <code>-[&lt;UITextFieldDelegate&gt; textFieldShouldReturn:]</code>, have a complicated set of behavior that&#8217;s difficult and fragile to replicate if super doesn&#8217;t respond. I consider this bad API design.<a href="#fnref:delegate-default-value" class="reversefootnote">&#8617;</a></p>
+    </li>
+    <li id="fn:static-storyboards">
+      <p>I don&#8217;t know why this requires a storyboard instead of a xib. You can drag out a table view controller and a table view, add <code>dataMode="static"</code> in the XML, and Xcode will display and edit it fine. But when it&#8217;s compiled, you&#8217;ll get <em>error: Table views with embedded sections and cells are only supported in storyboard documents</em>. Anyway, this also requires having the nib load the view controller, instead of the (usual) other way around.<a href="#fnref:static-storyboards" class="reversefootnote">&#8617;</a></p>
+    </li>
+    <li id="fn:objc-runtime-header">
+      <p>You will need to <code>#import</code> a particular header for this hackery to compile. If you don&#8217;t know which one, using this technique will cause you too much trouble.<a href="#fnref:objc-runtime-header" class="reversefootnote">&#8617;</a></p>
+    </li>
+  </ol>
+</div>
+
+	</div>
+</article>
+
+
+		<footer>
+			<p>dev etc is written by Jonathon Mah.</p>
+			<ul class="contact">
+				<li>me <span>AT</span> JonathonMah.com</li>
+				<li><a href="https://github.com/jmah">github.com/jmah</a></li>
+				<li><a href="https://alpha.app.net/jmah">app.net/jmah</a></li>
+				<li><a href="https://twitter.com/dev_etc">twitter.com/dev_etc</a></li>
+			</ul>
+		</footer>
+
+	</body>
+</html>

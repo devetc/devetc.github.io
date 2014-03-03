@@ -7,6 +7,327 @@
 		<atom:link href="http://devetc.org/feed.xml" rel="self" type="application/rss+xml" />
 		
 			<item>
+				<title>Subclassing Delegates</title>
+				<description>&lt;p&gt;&lt;strong&gt;tl;dr:&lt;/strong&gt; Quickly looking for the right way to subclass delegates?
+Jump to the &lt;a href=&quot;#summary-and-code-snippets&quot;&gt;Summary and Code Snippets&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;The delegation pattern is widely used throughout the Cocoa frameworks, for good reason. A delegate customizes another object&amp;#8217;s behavior in a lightweight way, with less coupling than a subclass.
+A single object can be the delegate of several others, so a set of controls presented to the user as a logical group (say, a table and some text fields) can be managed by code that&amp;#8217;s also kept together.&lt;sup id=&quot;fnref:massive-view-controller&quot;&gt;&lt;a href=&quot;#fn:massive-view-controller&quot; class=&quot;footnote&quot;&gt;1&lt;/a&gt;&lt;/sup&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;interface-or-implementation&quot;&gt;Interface or implementation?&lt;/h2&gt;
+
+&lt;p&gt;List delegate protocols in the public interface of a class.&lt;/p&gt;
+
+&lt;p&gt;Let&amp;#8217;s consider a chain of three classes: &lt;code&gt;SpecificViewController : BaseViewController : UIViewController&lt;/code&gt;. &lt;code&gt;BaseViewController&lt;/code&gt; contains behavior common to several views of our app, and has several subclasses, including &lt;code&gt;SpecificViewController&lt;/code&gt;. This behavior includes managing a &lt;code&gt;UITextField&lt;/code&gt;, and so it conforms to the &lt;code&gt;&amp;lt;UITextFieldDelegate&amp;gt;&lt;/code&gt; protocol.&lt;/p&gt;
+
+&lt;p&gt;Objective-C 2.0 added the ability to declare protocols in a class&amp;#8217;s implementation, like this:&lt;/p&gt;
+
+&lt;h4 id=&quot;baseviewcontrollerh&quot;&gt;BaseViewController.h&lt;/h4&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;objc&quot;&gt;&lt;span class=&quot;k&quot;&gt;@interface&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;BaseViewController&lt;/span&gt; : &lt;span class=&quot;nc&quot;&gt;UIViewController&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;h4 id=&quot;baseviewcontrollerm&quot;&gt;BaseViewController.m&lt;/h4&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;objc&quot;&gt;&lt;span class=&quot;cp&quot;&gt;#import &amp;quot;BaseViewController.h&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@interface&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;BaseViewController&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UITextFieldDelegate&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@property&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nonatomic&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;IBOutlet&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;UITextField&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;baseTextField&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;@implementation&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;BaseViewController&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;textFieldDidEndEditing:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UITextField&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;textField&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;textField&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;baseTextField&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;NSLog&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;@&amp;quot;%s with %@&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;__func__&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;textField&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;text&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+        &lt;span class=&quot;c1&quot;&gt;// ...&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;At first glance this seems like a good approach, and makes our encapsulation senses tingle with joy.
+But it has problems.&lt;/p&gt;
+
+&lt;p&gt;Someone else on the team is working on a subclass, &lt;code&gt;SpecificViewController&lt;/code&gt;, which needs an extra text field. So it also conforms to &lt;code&gt;&amp;lt;UITextFieldDelegate&amp;gt;&lt;/code&gt;:&lt;/p&gt;
+
+&lt;h4 id=&quot;specificviewcontrollerm&quot;&gt;SpecificViewController.m&lt;/h4&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;objc&quot;&gt;&lt;span class=&quot;cp&quot;&gt;#import &amp;quot;SpecificViewController.h&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@interface&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;SpecificViewController&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UITextFieldDelegate&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@property&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nonatomic&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;IBOutlet&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;UITextField&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;secondTextField&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;@implementation&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;SpecificViewController&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;textFieldDidEndEditing:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UITextField&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;textField&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;textField&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;secondTextField&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;c1&quot;&gt;// ...&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Have you noticed the problem? The behavior attached to &lt;code&gt;baseTextField&lt;/code&gt; has silently been lost!
+The subclass hasn&amp;#8217;t called super, but calling super would generate a compiler warning, because the protocol was listed in the superclass&amp;#8217;s private implementation and not public interface.&lt;/p&gt;
+
+&lt;p&gt;The solution to this is to &lt;strong&gt;declare delegate protocol conformance in a class&amp;#8217;s public interface&lt;/strong&gt;, and &lt;strong&gt;call super from overridden delegate methods&lt;/strong&gt;.
+Declaring protocol conformance in the implementation is therefore often inappropriate.&lt;/p&gt;
+
+&lt;p&gt;However, there&amp;#8217;s another complication.&lt;/p&gt;
+
+&lt;h2 id=&quot;forwarding-optional-methods&quot;&gt;Forwarding optional methods&lt;/h2&gt;
+
+&lt;p&gt;Cocoa delegate protocols&lt;sup id=&quot;fnref:delegate-protocols&quot;&gt;&lt;a href=&quot;#fn:delegate-protocols&quot; class=&quot;footnote&quot;&gt;2&lt;/a&gt;&lt;/sup&gt; have the slightly unusual feature of optional methods.
+This speeds up prototyping and development — just implement what you want to use — but interacts with subclassing in a subtle way.&lt;/p&gt;
+
+&lt;p&gt;Many delegate methods are &lt;code&gt;@optional&lt;/code&gt;.
+Before calling one, you&amp;#8217;re responsible for checking whether it&amp;#8217;s available; the compiler doesn&amp;#8217;t do any checking.
+(It&amp;#8217;s similar to pointers: the compiler allows you to dereference any address, and your code is responsible for at least ensuring it&amp;#8217;s not &lt;code&gt;NULL&lt;/code&gt;.)&lt;/p&gt;
+
+&lt;p&gt;We&amp;#8217;ve moved the delegate protocol into the &lt;code&gt;BaseViewController.h&lt;/code&gt; header file.
+Now subclasses can know that the superclass cares about the protocol, so they should forward the methods.
+Let&amp;#8217;s adjust &lt;code&gt;SpecificViewController.m&lt;/code&gt;:&lt;/p&gt;
+
+&lt;h4 id=&quot;specificviewcontrollerm-1&quot;&gt;SpecificViewController.m&lt;/h4&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;objc&quot;&gt;&lt;span class=&quot;k&quot;&gt;@implementation&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;SpecificViewController&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;textFieldDidEndEditing:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UITextField&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;textField&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;textField&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;secondTextField&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;c1&quot;&gt;// ...&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;super&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;textFieldDidEndEditing&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;textField&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Looks good, works great.
+But &lt;code&gt;secondTextField&lt;/code&gt; needs some more behavior, so it adds another delegate method:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;objc&quot;&gt;&lt;span class=&quot;k&quot;&gt;@implementation&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;SpecificViewController&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;textFieldDidEndEditing:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UITextField&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;textField&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;// ... as above&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;BOOL&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;textFieldShouldClear:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UITextField&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;textField&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;textField&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;secondTextField&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;someConditionIsMet&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;super&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;textFieldShouldClear&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;textField&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;We try it out, it works as expected.
+But then someone presses the &amp;#8220;clear&amp;#8221; button in &lt;code&gt;baseTextField&lt;/code&gt;, and&amp;#8230; &lt;em&gt;crash!&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;-textFieldShouldClear:&lt;/code&gt; is an optional method in &lt;code&gt;&amp;lt;UITextFieldDelegate&amp;gt;&lt;/code&gt;, so the onus is on the caller to check if it&amp;#8217;s safe to call — in this case, it&amp;#8217;s not.
+So how can we check?&lt;/p&gt;
+
+&lt;h3 id=&quot;look-through-the-source-code-of-all-superclasses&quot;&gt;1. Look through the source code of all superclasses.&lt;/h3&gt;
+
+&lt;p&gt;We see that &lt;code&gt;BaseViewController&lt;/code&gt; doesn&amp;#8217;t implement this method, so we can remove the call to super.
+But then if it ever adds it, the behavior will be silently lost again!
+With this approach, adding or removing a delegate method requires auditing all superclasses and all subclasses — &lt;strong&gt;not a scalable solution&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;Worse: If you miss something, the code will still compile and run.
+Everything will likely look fine on the surface, but have a bug lurking below.&lt;/p&gt;
+
+&lt;h3 id=&quot;respondstoselector-of-course&quot;&gt;2. &lt;code&gt;-respondsToSelector:&lt;/code&gt;, of course&lt;/h3&gt;
+
+&lt;p&gt;When we implement an object that takes its own delegate, the rule is easy:
+Guard all calls to &lt;code&gt;@optional&lt;/code&gt; methods by &lt;code&gt;-respondsToSelector:&lt;/code&gt;, like this:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;objc&quot;&gt;&lt;span class=&quot;k&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;BOOL&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;canBecomeFirstResponder&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;([&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;delegate&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;respondsToSelector&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;@selector&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;myControlCanBecomeFirstResponder&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)])&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;delegate&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;myControlCanBecomeFirstResponder&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;YES&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Inside &lt;code&gt;-[SpecificViewController textFieldShouldClear:]&lt;/code&gt; the selector we want to check is the same as the method we&amp;#8217;re in, so we can just refer to it as &lt;code&gt;_cmd&lt;/code&gt;.&lt;sup id=&quot;fnref:_cmd-arg&quot;&gt;&lt;a href=&quot;#fn:_cmd-arg&quot; class=&quot;footnote&quot;&gt;3&lt;/a&gt;&lt;/sup&gt;
+Now obviously &lt;code&gt;[self respondsToSelector:_cmd]&lt;/code&gt; will return true, because we&amp;#8217;re in that very method right now.
+So does &lt;code&gt;[super respondsToSelector:_cmd]&lt;/code&gt; perform the check we want?&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;No.&lt;/strong&gt;
+The quick-and-dirty translation into English reads, &amp;#8220;ask super if it responds to the selector in &lt;code&gt;_cmd&lt;/code&gt;,&amp;#8221; but that&amp;#8217;s wrong and misleading.&lt;/p&gt;
+
+&lt;p&gt;We need to think more precisely about what the &lt;code&gt;super&lt;/code&gt; call &lt;em&gt;actually&lt;/em&gt; means.
+Which is, &amp;#8220;call the superclass&amp;#8217;s implementation of &lt;code&gt;-respondsToSelector:&lt;/code&gt;, passing it &lt;code&gt;_cmd&lt;/code&gt;&amp;#8221;.
+Laid out like this, the behavior is clear:
+&lt;code&gt;SpecificViewController&lt;/code&gt; hasn&amp;#8217;t overridden &lt;code&gt;-respondsToSelector:&lt;/code&gt;, which means &lt;code&gt;[self respondsToSelector:]&lt;/code&gt; and &lt;code&gt;[super respondsToSelector:]&lt;/code&gt; are exactly equivalent, both most likely using &lt;code&gt;NSObject&lt;/code&gt;&amp;#8217;s implementation.&lt;/p&gt;
+
+&lt;h3 id=&quot;instancesrespondtoselector-nice-to-meet-you&quot;&gt;3. &lt;code&gt;+instancesRespondToSelector:&lt;/code&gt;, nice to meet you&lt;/h3&gt;
+
+&lt;p&gt;This is an oft forgotten &lt;code&gt;NSObject&lt;/code&gt; method which does exactly as it sounds: performs &lt;code&gt;-respondsToSelector:&lt;/code&gt;, but at the class level.&lt;/p&gt;
+
+&lt;p&gt;So we can do this:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;objc&quot;&gt;&lt;span class=&quot;k&quot;&gt;@implementation&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;SpecificViewController&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;BOOL&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;textFieldShouldClear:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UITextField&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;textField&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;textField&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;secondTextField&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;someConditionIsMet&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;([&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;BaseViewController&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;instancesRespondToSelector&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_cmd&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;])&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;super&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;textFieldShouldClear&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;textField&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;YES&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;strong&gt;This is correct!&lt;/strong&gt;
+Note that we also had to hard-code the default value in case the superclass doesn&amp;#8217;t respond.&lt;sup id=&quot;fnref:delegate-default-value&quot;&gt;&lt;a href=&quot;#fn:delegate-default-value&quot; class=&quot;footnote&quot;&gt;4&lt;/a&gt;&lt;/sup&gt;&lt;/p&gt;
+
+&lt;p&gt;It&amp;#8217;s ugly to hard-code the superclass in there like that, so how about &lt;code&gt;[[[self class] superclass] instancesRespondToSelector:_cmd]&lt;/code&gt;?
+This &lt;em&gt;feels like&lt;/em&gt; it should be the same, but it&amp;#8217;s booby-trapped!
+When someone else comes along and declares another subclass, &lt;code&gt;EvenMoreSpecificViewController : SpecificViewController&lt;/code&gt;, then &lt;code&gt;[self class]&lt;/code&gt; is &lt;code&gt;EvenMoreSpecificViewController&lt;/code&gt; and &lt;code&gt;[[self class] superclass]&lt;/code&gt; is &lt;code&gt;SpecificViewController&lt;/code&gt;.
+That check would succeed, there&amp;#8217;d be a call to super (&lt;code&gt;BaseViewController&lt;/code&gt;), then a crash.
+So nope.&lt;/p&gt;
+
+&lt;p&gt;It&amp;#8217;s slightly cleaner is to use the defining class: &lt;code&gt;[[SpecificViewController superclass] instancesRespondToSelector:_cmd]&lt;/code&gt;.
+This adds safety in case a class ever gets split into two, changing the superclass.
+But it&amp;#8217;s still an absolute reference, so the code isn&amp;#8217;t a nice cut-and-paste snippet.&lt;/p&gt;
+
+&lt;p&gt;It&amp;#8217;d be nice to have a way to reference the defining class — like the &lt;code&gt;__FILE__&lt;/code&gt; macro but for the current &lt;code&gt;@implementation&lt;/code&gt;.
+Although there&amp;#8217;s nothing built-in, it&amp;#8217;s possible to add with a macro (though less efficiently than one provided by the compiler).
+I&amp;#8217;ve done that in the &lt;a href=&quot;https://github.com/jmah/MyLilHelpers&quot;&gt;MyLilHelpers&lt;/a&gt; project, called &lt;code&gt;_definingClass&lt;/code&gt;.
+Using this, we can create a copy-and-paste snippet:
+&lt;code&gt;[[_definingClass superclass] instancesRespondToSelector:_cmd]&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;You now know how to subclass a delegate properly!&lt;/p&gt;
+
+&lt;h2 id=&quot;curious-uitableviewcontroller-behavior&quot;&gt;Curious UITableViewController behavior&lt;/h2&gt;
+
+&lt;p&gt;I was initially planning on using &lt;code&gt;UITableViewController&lt;/code&gt; for this posts&amp;#8217;s example because it&amp;#8217;s commonly subclassed, and conforms to both &lt;code&gt;&amp;lt;UITableViewDataSource&amp;gt;&lt;/code&gt; and &lt;code&gt;&amp;lt;UITableViewDelegate&amp;gt;&lt;/code&gt;.
+I fired up the inquisitive Cocoa developer&amp;#8217;s best friend, &lt;a href=&quot;http://www.hopperapp.com/&quot;&gt;Hopper Disassembler&lt;/a&gt;, to see which of the optional methods it implemented.
+To my surprise, I found it&amp;#8217;s more complicated than that.&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;UITableViewController&lt;/code&gt; plays games with &lt;code&gt;respondsToSelector:&lt;/code&gt;.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;objc&quot;&gt;&lt;span class=&quot;kt&quot;&gt;SEL&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;sel&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;@selector&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tableView&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;heightForRowAtIndexPath&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UITableViewController&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;instancesRespondToSelector&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sel&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// returns YES&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;[[[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UITableViewController&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;alloc&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;init&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;respondsToSelector&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;sel&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// returns NO!&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Since this is exceptional behavior, I had to choose a different example.&lt;/p&gt;
+
+&lt;p&gt;The reason for this is to support the &amp;#8220;static data source&amp;#8221; mode which can be set up in storyboards&lt;sup id=&quot;fnref:static-storyboards&quot;&gt;&lt;a href=&quot;#fn:static-storyboards&quot; class=&quot;footnote&quot;&gt;5&lt;/a&gt;&lt;/sup&gt; with Interface Builder.
+&lt;code&gt;UITableViewController&lt;/code&gt; overrides &lt;code&gt;-respondsToSelector:&lt;/code&gt; to check if its &lt;code&gt;_staticDataSource&lt;/code&gt; is nil, and then returns &lt;code&gt;NO&lt;/code&gt; for a bunch of these methods — but only if they haven&amp;#8217;t been overridden by a subclass.
+As of the iOS 7.0 SDK these methods are:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;code&gt;tableView:titleForHeaderInSection:&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;code&gt;tableView:titleForFooterInSection:&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;code&gt;tableView:heightForHeaderInSection:&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;code&gt;tableView:heightForFooterInSection:&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;code&gt;tableView:viewForHeaderInSection:&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;code&gt;tableView:viewForFooterInSection:&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;code&gt;tableView:heightForRowAtIndexPath:&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;code&gt;tableView:indentationLevelForRowAtIndexPath:&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;There&amp;#8217;s actually no harm in calling these without a static data source, so the above solutoion still works for &lt;code&gt;UITableViewController&lt;/code&gt; subclasses.&lt;/p&gt;
+
+&lt;p&gt;But what if you &lt;em&gt;really really&lt;/em&gt; want to know what &lt;code&gt;UITableViewController&lt;/code&gt; &lt;strong&gt;would&lt;/strong&gt; have returned?
+If this were &lt;a href=&quot;https://mikeash.com/pyblog/&quot;&gt;Mike Ash&amp;#8217;s blog&lt;/a&gt;, there&amp;#8217;d now be an in-depth examination on using &lt;code&gt;object_setClass&lt;/code&gt;.
+But it&amp;#8217;s not, so I&amp;#8217;ll just leave you with this snippet:&lt;sup id=&quot;fnref:objc-runtime-header&quot;&gt;&lt;a href=&quot;#fn:objc-runtime-header&quot; class=&quot;footnote&quot;&gt;6&lt;/a&gt;&lt;/sup&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;objc&quot;&gt;&lt;span class=&quot;k&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSString&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;tableView:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UITableView&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;tableView&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;titleForHeaderInSection:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSInteger&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;section&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;Class&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;object_getClass&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;object_setClass&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UITableViewController&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]);&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;BOOL&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;superWouldRespond&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;respondsToSelector&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_cmd&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;object_setClass&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;orig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;// ...&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;I love the power of Objective-C.
+Just to be clear, &lt;strong&gt;don&amp;#8217;t do this!&lt;/strong&gt; Here be dragons.&lt;/p&gt;
+
+&lt;h2 id=&quot;summary-and-code-snippets&quot;&gt;Summary and Code Snippets&lt;/h2&gt;
+
+&lt;p&gt;Specify delegate protocols in the public interface of a class.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;objc&quot;&gt;&lt;span class=&quot;k&quot;&gt;@interface&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;MyViewController&lt;/span&gt; : &lt;span class=&quot;nc&quot;&gt;UIViewController&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UICollectionViewDataSource&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;If you implement a method from a protocol conformed to by a superclass, call super.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;objc&quot;&gt;&lt;span class=&quot;k&quot;&gt;@interface&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;MyViewControllerSubclass&lt;/span&gt; : &lt;span class=&quot;nc&quot;&gt;MyViewController&lt;/span&gt;
+&lt;span class=&quot;c1&quot;&gt;// adds a section to the collection view&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;@implementation&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;MyViewControllerSubclass&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSInteger&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;numberOfSectionsInCollectionView:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UICollectionView&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;collectionView&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;// Optional method. Super may not implement, must check.&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;NSInteger&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;baseSections&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;([[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;MyViewControllerSubclass&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;superclass&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;instancesRespondToSelector&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_cmd&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;])&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;baseSections&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;super&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;numberOfSectionsInCollectionView&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;collectionView&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;baseSections&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSInteger&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;collectionView:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UICollectionView&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;collectionView&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;numberOfItemsInSection:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSInteger&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;section&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;// Required method, just call super.&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;section&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;collectionView&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;numberOfSections&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;super&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;collectionView&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;collectionView&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;numberOfItemsInSection&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;section&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;With &lt;a href=&quot;https://github.com/jmah/MyLilHelpers&quot;&gt;MyLilHelper&lt;/a&gt;&amp;#8217;s &lt;code&gt;_definingClass&lt;/code&gt; macro, checking super doesn&amp;#8217;t require specifying the class:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;objc&quot;&gt;&lt;span class=&quot;k&quot;&gt;@implementation&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;MyViewControllerSubclass&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSInteger&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;numberOfSectionsInCollectionView:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UICollectionView&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;collectionView&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;// Optional method. Super may not implement, must check.&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;NSInteger&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;baseSections&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;([[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_definingClass&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;superclass&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;instancesRespondToSelector&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_cmd&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;])&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;baseSections&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;super&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;numberOfSectionsInCollectionView&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;collectionView&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;baseSections&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;div class=&quot;footnotes&quot;&gt;
+  &lt;ol&gt;
+    &lt;li id=&quot;fn:massive-view-controller&quot;&gt;
+      &lt;p&gt;Of course, over time a controller can get overgrown with many independent delegate responsibilities. For practical advice on managing this in iOS, see the &lt;a href=&quot;http://www.objc.io/issue-1/&quot;&gt;objc.io issue on Lighter View Controllers&lt;/a&gt;.&lt;a href=&quot;#fnref:massive-view-controller&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:delegate-protocols&quot;&gt;
+      &lt;p&gt;Delegates have almost all switched over to fully-fledged Objective-C &lt;code&gt;@protocol&lt;/code&gt;s. In the olden days they were declared as un-implemented categories on &lt;code&gt;NSObject&lt;/code&gt;, but still called &amp;#8220;informal protocols&amp;#8221;.&lt;a href=&quot;#fnref:delegate-protocols&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:_cmd-arg&quot;&gt;
+      &lt;p&gt;&lt;code&gt;_cmd&lt;/code&gt; is like &lt;code&gt;self&lt;/code&gt;, but references the selector instead of the receiver. See &lt;a href=&quot;https://developer.apple.com/library/mac/documentation/cocoa/conceptual/ObjCRuntimeGuide/Articles/ocrtHowMessagingWorks.html#//apple_ref/doc/uid/TP40008048-CH104-TPXREF134&quot;&gt;Objective-C Runtime Programming Guide: Using Hidden Arguments&lt;/a&gt;.&lt;a href=&quot;#fnref:_cmd-arg&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:delegate-default-value&quot;&gt;
+      &lt;p&gt;The default for delegate methods that have a return value is usually in the documentation. However some methods, like &lt;code&gt;-[&amp;lt;UITextFieldDelegate&amp;gt; textFieldShouldReturn:]&lt;/code&gt;, have a complicated set of behavior that&amp;#8217;s difficult and fragile to replicate if super doesn&amp;#8217;t respond. I consider this bad API design.&lt;a href=&quot;#fnref:delegate-default-value&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:static-storyboards&quot;&gt;
+      &lt;p&gt;I don&amp;#8217;t know why this requires a storyboard instead of a xib. You can drag out a table view controller and a table view, add &lt;code&gt;dataMode=&quot;static&quot;&lt;/code&gt; in the XML, and Xcode will display and edit it fine. But when it&amp;#8217;s compiled, you&amp;#8217;ll get &lt;em&gt;error: Table views with embedded sections and cells are only supported in storyboard documents&lt;/em&gt;. Anyway, this also requires having the nib load the view controller, instead of the (usual) other way around.&lt;a href=&quot;#fnref:static-storyboards&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:objc-runtime-header&quot;&gt;
+      &lt;p&gt;You will need to &lt;code&gt;#import&lt;/code&gt; a particular header for this hackery to compile. If you don&amp;#8217;t know which one, using this technique will cause you too much trouble.&lt;a href=&quot;#fnref:objc-runtime-header&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+  &lt;/ol&gt;
+&lt;/div&gt;
+</description>
+				<pubDate>Sun, 02 Mar 2014 22:55:22 -0800</pubDate>
+				<link>http://devetc.org//code/2014/03/02/subclassing-delegates.html</link>
+				<guid isPermaLink="true">http://devetc.org//code/2014/03/02/subclassing-delegates.html</guid>
+			</item>
+		
+			<item>
 				<title>Strong Feelings on Weak Outlets</title>
 				<description>&lt;p&gt;There are mixed opinions on whether &lt;code&gt;IBOutlet&lt;/code&gt; properties should be strong or weak.
 Apple themselves changed their recommendation with iOS 5.
