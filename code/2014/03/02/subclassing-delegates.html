@@ -297,8 +297,7 @@ Just to be clear, <strong>don&#8217;t do this!</strong> Here be dragons.</p>
 <span class="k">@end</span>
 
 <span class="k">@implementation</span> <span class="nc">MyViewControllerSubclass</span>
-<span class="k">-</span> <span class="p">(</span><span class="n">NSInteger</span><span class="p">)</span><span class="nf">numberOfSectionsInCollectionView:</span><span class="p">(</span><span class="n">UICollectionView</span> <span class="o">*</span><span class="p">)</span><span class="nv">collectionView</span>
-<span class="p">{</span>
+<span class="k">-</span> <span class="p">(</span><span class="n">NSInteger</span><span class="p">)</span><span class="nf">numberOfSectionsInCollectionView:</span><span class="p">(</span><span class="n">UICollectionView</span> <span class="o">*</span><span class="p">)</span><span class="nv">collectionView</span> <span class="p">{</span>
     <span class="c1">// Optional method. Super may not implement, must check.</span>
     <span class="n">NSInteger</span> <span class="n">baseSections</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
     <span class="k">if</span> <span class="p">([[</span><span class="n">MyViewControllerSubclass</span> <span class="n">superclass</span><span class="p">]</span> <span class="n">instancesRespondToSelector</span><span class="o">:</span><span class="n">_cmd</span><span class="p">])</span> <span class="p">{</span>
@@ -307,8 +306,7 @@ Just to be clear, <strong>don&#8217;t do this!</strong> Here be dragons.</p>
     <span class="k">return</span> <span class="n">baseSections</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
 <span class="p">}</span>
 
-<span class="k">-</span> <span class="p">(</span><span class="n">NSInteger</span><span class="p">)</span><span class="nf">collectionView:</span><span class="p">(</span><span class="n">UICollectionView</span> <span class="o">*</span><span class="p">)</span><span class="nv">collectionView</span> <span class="nf">numberOfItemsInSection:</span><span class="p">(</span><span class="n">NSInteger</span><span class="p">)</span><span class="nv">section</span>
-<span class="p">{</span>
+<span class="k">-</span> <span class="p">(</span><span class="n">NSInteger</span><span class="p">)</span><span class="nf">collectionView:</span><span class="p">(</span><span class="n">UICollectionView</span> <span class="o">*</span><span class="p">)</span><span class="nv">collectionView</span> <span class="nf">numberOfItemsInSection:</span><span class="p">(</span><span class="n">NSInteger</span><span class="p">)</span><span class="nv">section</span> <span class="p">{</span>
     <span class="c1">// Required method, just call super.</span>
     <span class="k">if</span> <span class="p">(</span><span class="n">section</span> <span class="o">==</span> <span class="p">(</span><span class="n">collectionView</span><span class="p">.</span><span class="n">numberOfSections</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span> <span class="p">{</span>
         <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
@@ -322,8 +320,7 @@ Just to be clear, <strong>don&#8217;t do this!</strong> Here be dragons.</p>
 <p>With <a href="https://github.com/jmah/MyLilHelpers">MyLilHelper</a>&#8217;s <code>_definingClass</code> macro, checking super doesn&#8217;t require specifying the class:</p>
 
 <div class="highlight"><pre><code class="objc"><span class="k">@implementation</span> <span class="nc">MyViewControllerSubclass</span>
-<span class="k">-</span> <span class="p">(</span><span class="n">NSInteger</span><span class="p">)</span><span class="nf">numberOfSectionsInCollectionView:</span><span class="p">(</span><span class="n">UICollectionView</span> <span class="o">*</span><span class="p">)</span><span class="nv">collectionView</span>
-<span class="p">{</span>
+<span class="k">-</span> <span class="p">(</span><span class="n">NSInteger</span><span class="p">)</span><span class="nf">numberOfSectionsInCollectionView:</span><span class="p">(</span><span class="n">UICollectionView</span> <span class="o">*</span><span class="p">)</span><span class="nv">collectionView</span> <span class="p">{</span>
     <span class="c1">// Optional method. Super may not implement, must check.</span>
     <span class="n">NSInteger</span> <span class="n">baseSections</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
     <span class="k">if</span> <span class="p">([[</span><span class="n">_definingClass</span> <span class="n">superclass</span><span class="p">]</span> <span class="n">instancesRespondToSelector</span><span class="o">:</span><span class="n">_cmd</span><span class="p">])</span> <span class="p">{</span>
