@@ -51,7 +51,7 @@ This makes `NSTimer` **incorrect for timeouts and timing** involving anything ex
 
 This chart lays out how the clock values change over time in the above video:
 
-![Clock values over time](/assets/MyLilTimers-clock-values-over-time.svg)
+![Clock values over time](/assets/2014-01-21-timers-clocks-and-cocoa/MyLilTimer-clock-values-over-time.svg)
 
 For measuring durations without interference from real-time clock changes or system sleep, **you need to use boot time** — which `NSTimer` does not provide.
 To make matters worse, iOS devices don't go to sleep when plugged in, including when running an app from Xcode.
