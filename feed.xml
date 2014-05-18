@@ -7,6 +7,114 @@
 		<atom:link href="http://devetc.org/feed.xml" rel="self" type="application/rss+xml" />
 		
 			<item>
+				<title>Safe and Sane Key Paths</title>
+				<description>&lt;p&gt;&lt;a href=&quot;https://developer.apple.com/library/mac/documentation/cocoa/Conceptual/KeyValueCoding/Articles/KeyValueCoding.html&quot;&gt;Key–value coding&lt;/a&gt; — &lt;code&gt;valueForKeyPath:&lt;/code&gt; and &lt;code&gt;setValue:forKeyPath:&lt;/code&gt; — is very useful for converting data from one format to another, such as copying from a property list-like structure (e.g. deserialized JSON) into model objects proper.
+This avoids a lot of boilerplate typically found in, for example, Java-based systems&lt;sup id=&quot;fnref:java-boilerplate&quot;&gt;&lt;a href=&quot;#fn:java-boilerplate&quot; class=&quot;footnote&quot;&gt;1&lt;/a&gt;&lt;/sup&gt;.&lt;/p&gt;
+
+&lt;p&gt;On the Mac, with &lt;a href=&quot;https://developer.apple.com/library/mac/documentation/Cocoa/Conceptual/CocoaBindings/CocoaBindings.html&quot;&gt;Cocoa Bindings&lt;/a&gt; you can throw together a simple UI in a flash, setting up key paths in Interface Builder.
+On iOS you have to provide some of the glue yourself, but you typically let &lt;a href=&quot;https://developer.apple.com/library/mac/documentation/Cocoa/Conceptual/KeyValueObserving/KeyValueObserving.html&quot;&gt;key–value observing&lt;/a&gt; do the hardest work.&lt;/p&gt;
+
+&lt;h2 id=&quot;the-problem&quot;&gt;The problem&lt;/h2&gt;
+
+&lt;p&gt;These &amp;#8220;key–value&amp;#8221; techniques have one main thing in common:
+They use strings to reference code.
+This makes it fragile. For example:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;objc&quot;&gt;&lt;span class=&quot;k&quot;&gt;@implementation&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;ContrivedExample&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSString&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;title&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;@&amp;quot;foo&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSUInteger&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;contrivedLength&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;title&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;length&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSUInteger&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;contrivedLengthKVC&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;valueForKey&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;@&amp;quot;title&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;length&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;If we rename the method &lt;code&gt;title&lt;/code&gt;, the compiler will immediately show that &lt;code&gt;contrivedLength&lt;/code&gt; won&amp;#8217;t work without changes.
+But &lt;code&gt;contrivedLengthKVC&lt;/code&gt; will have no such warning, because &lt;code&gt;@&quot;title&quot;&lt;/code&gt; remains a perfectly valid string.
+We would only see an error at run-time, if and when that code was triggered.
+Of course in real code, string references like this appear much further apart than in the above snippet, making stale references and even typos a real problem.&lt;/p&gt;
+
+&lt;h2 id=&quot;the-common-solution&quot;&gt;The common solution&lt;/h2&gt;
+
+&lt;p&gt;In short:
+&lt;strong&gt;The compiler does not validate key paths, because they are strings.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;One approach toward validation is avoid strings&lt;sup id=&quot;fnref:stringly-typed&quot;&gt;&lt;a href=&quot;#fn:stringly-typed&quot; class=&quot;footnote&quot;&gt;2&lt;/a&gt;&lt;/sup&gt;. Of course, a string must emerge at some point, but pre-processor macros allow using the same expression (&lt;code&gt;title&lt;/code&gt;) as both code and data, at compile-time.
+Many have taken this route, resulting in a large variety&lt;sup id=&quot;fnref:safe-kvc-links&quot;&gt;&lt;a href=&quot;#fn:safe-kvc-links&quot; class=&quot;footnote&quot;&gt;3&lt;/a&gt;&lt;/sup&gt; with different trade-offs. A couple that are representative:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;With &lt;a href=&quot;https://github.com/jspahrsummers/libextobjc/blob/master/extobjc/EXTKeyPathCoding.h&quot;&gt;libextobjc&lt;/a&gt; you have to specify the target of the key path twice — &lt;code&gt;[self valueForKey:@keypath(self.title)]&lt;/code&gt; above — though this is often redundant, and obscures that the resulting string will be simply &amp;#8220;title&amp;#8221;.&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/delicious-monster/DMSafeKVC&quot;&gt;DMSafeKVC&lt;/a&gt; is more concise at use — &lt;code&gt;[self valueForKey:K(title)]&lt;/code&gt; — but require annotating declarations, and only checks that &lt;em&gt;some&lt;/em&gt; class has an annotated “title” accessor.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;Compiler error messages are typically obscured due to macro expansion. And if you&amp;#8217;re writing library code&lt;sup id=&quot;fnref:library-code&quot;&gt;&lt;a href=&quot;#fn:library-code&quot; class=&quot;footnote&quot;&gt;4&lt;/a&gt;&lt;/sup&gt;, often the best approach is to use the lowest common denominator — static strings.&lt;/p&gt;
+
+&lt;p&gt;A few months back, my colleagues at Fitbit discussed the ups and downs of various macro implementations and didn&amp;#8217;t arrive at consensus.
+Additionally, retrofitting our codebase would be a mostly manual task and likely generate many conflicts (our repository has around 10 active committers).&lt;/p&gt;
+
+&lt;p&gt;I began to consider a different approach.&lt;/p&gt;
+
+&lt;h2 id=&quot;the-code-less-traveled&quot;&gt;The code less traveled&lt;/h2&gt;
+
+&lt;p&gt;&lt;strong&gt;The compiler does not validate key paths, because they are strings.&lt;/strong&gt;
+In our phrasing of the problem, a second solution becomes apparent: make the compiler validate the strings!&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;/assets/2014-05-17-safe-and-sane-key-paths/warnings.png&quot;&gt;&lt;img alt=&quot;Key path warnings in Xcode&quot; src=&quot;/assets/2014-05-17-safe-and-sane-key-paths/warnings.png&quot; width=&quot;640&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;In the past, touching the compiler has been considered off-the-table for various reasons. With clang, this is now more practical&lt;sup id=&quot;fnref:practicality&quot;&gt;&lt;a href=&quot;#fn:practicality&quot; class=&quot;footnote&quot;&gt;5&lt;/a&gt;&lt;/sup&gt;, but the previous stigma still lingers.&lt;/p&gt;
+
+&lt;p&gt;This code is currently proof-of-concept quality.
+(I&amp;#8217;m only a C++ novice, and barely familiar with the clang codebase.)
+It currently:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Checks some hard-coded method calls that are passed string literal arguments (including macros that expand to string literals).&lt;/li&gt;
+  &lt;li&gt;Validates that there are corresponding getter methods, recursing down the key path.&lt;/li&gt;
+  &lt;li&gt;Checks for a method named &lt;code&gt;key&lt;/code&gt; or &lt;code&gt;isKey&lt;/code&gt;, or a collection property that might be backed with &lt;a href=&quot;https://developer.apple.com/library/ios/documentation/cocoa/conceptual/KeyValueCoding/Articles/AccessorConventions.html#//apple_ref/doc/uid/20002174-178830-BAJEDEFB&quot;&gt;KVC collection accessor methods&lt;/a&gt;.&lt;/li&gt;
+  &lt;li&gt;Does no checking if the type is &lt;code&gt;id&lt;/code&gt;, &lt;code&gt;NSDictionary&lt;/code&gt;, a class annotated with &lt;code&gt;objc_kvc_container&lt;/code&gt;, or a few more.&lt;/li&gt;
+  &lt;li&gt;Knows that scalar numbers will be returned as &lt;code&gt;NSNumber&lt;/code&gt;.&lt;/li&gt;
+  &lt;li&gt;Uses the diagnostic output of the secondary clang, but the binary output of Xcode&amp;#8217;s bundled clang.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The compiler plug-in doesn&amp;#8217;t do everything that some of the macro approaches do, but has the giant advantage of requiring zero code changes and no dependencies.
+It also doesn&amp;#8217;t exclude the use of macros, either.
+Only one small project setting change is required:&lt;/p&gt;
+
+&lt;p&gt;&lt;img alt=&quot;Key path warnings in Xcode&quot; src=&quot;/assets/2014-05-17-safe-and-sane-key-paths/build-setting.png&quot; width=&quot;642&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;If you&amp;#8217;d like to try this with your own project, look at the &lt;a href=&quot;https://github.com/jmah/Clang-KeyPathValidator&quot;&gt;Clang-KeyPathValidator&lt;/a&gt; README file.
+Then check out the &lt;a href=&quot;https://github.com/jmah/Clang-KeyPathValidator/issues&quot;&gt;GitHub Issues&lt;/a&gt; page and see if you can help out with something.
+Or just help get the word out!&lt;/p&gt;
+
+&lt;div class=&quot;footnotes&quot;&gt;
+  &lt;ol&gt;
+    &lt;li id=&quot;fn:java-boilerplate&quot;&gt;
+      &lt;p&gt;This opinion is several years old, before Java reflection was commonly available or efficient.&lt;a href=&quot;#fnref:java-boilerplate&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:stringly-typed&quot;&gt;
+      &lt;p&gt;The term &amp;#8220;stringly-typed&amp;#8221; is just great.&lt;a href=&quot;#fnref:stringly-typed&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:safe-kvc-links&quot;&gt;
+      &lt;p&gt;&lt;a href=&quot;http://orangejuiceliberationfront.com/safe-key-value-coding/&quot;&gt;Uli Kusterer&amp;#8217;s approach using &lt;code&gt;@selector&lt;/code&gt;&lt;/a&gt;;&lt;br /&gt;&lt;a href=&quot;https://gist.github.com/n-b/2394297&quot;&gt;Nicolas Bouilleaud&amp;#8217;s approach using &lt;code&gt;@selector&lt;/code&gt;&lt;/a&gt;;&lt;br /&gt;&lt;a href=&quot;https://gist.github.com/kyleve/8213806&quot;&gt;Kyle Van Essen&amp;#8217;s approach using declared targets&lt;/a&gt;;&lt;br /&gt;&lt;a href=&quot;https://gist.github.com/darknoon/4482025&quot;&gt;Andrew Pouliot&amp;#8217;s approach using declared targets&lt;/a&gt;;&lt;br /&gt;&lt;a href=&quot;https://github.com/iMartinKiss/Valid-KeyPath&quot;&gt;Martin Kiss&amp;#8217;s approach using declared targets&lt;/a&gt;;&lt;br /&gt;and many more.&lt;a href=&quot;#fnref:safe-kvc-links&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:library-code&quot;&gt;
+      &lt;p&gt;&amp;#8220;Library code&amp;#8221; refers to code shared between projects which might use different safe KVC techniques, or none at all.&lt;a href=&quot;#fnref:library-code&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:practicality&quot;&gt;
+      &lt;p&gt;It&amp;#8217;s unfortunately still not completely painless, because the particular versions shipped by Apple with Xcode are not made publicly available, and have plug-in support disabled.&lt;a href=&quot;#fnref:practicality&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+  &lt;/ol&gt;
+&lt;/div&gt;
+</description>
+				<pubDate>Sat, 17 May 2014 17:50:47 -0700</pubDate>
+				<link>http://devetc.org//code/2014/05/17/safe-and-sane-key-paths.html</link>
+				<guid isPermaLink="true">http://devetc.org//code/2014/05/17/safe-and-sane-key-paths.html</guid>
+			</item>
+		
+			<item>
 				<title>Subclassing Delegates</title>
 				<description>&lt;p&gt;&lt;strong&gt;tl;dr:&lt;/strong&gt; Quickly looking for the right way to subclass delegates?
 Jump to the &lt;a href=&quot;#summary-and-code-snippets&quot;&gt;Summary and Code Snippets&lt;/a&gt;.&lt;/p&gt;
@@ -510,7 +618,7 @@ This makes &lt;code&gt;NSTimer&lt;/code&gt; &lt;strong&gt;incorrect for timeouts
 
 &lt;p&gt;This chart lays out how the clock values change over time in the above video:&lt;/p&gt;
 
-&lt;p&gt;&lt;img src=&quot;/assets/MyLilTimers-clock-values-over-time.svg&quot; alt=&quot;Clock values over time&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/assets/2014-01-21-timers-clocks-and-cocoa/MyLilTimer-clock-values-over-time.svg&quot; alt=&quot;Clock values over time&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;For measuring durations without interference from real-time clock changes or system sleep, &lt;strong&gt;you need to use boot time&lt;/strong&gt; — which &lt;code&gt;NSTimer&lt;/code&gt; does not provide.
 To make matters worse, iOS devices don&amp;#8217;t go to sleep when plugged in, including when running an app from Xcode.
