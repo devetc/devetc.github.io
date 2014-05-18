@@ -7,7 +7,7 @@
 		<atom:link href="http://devetc.org/feed.xml" rel="self" type="application/rss+xml" />
 		
 			<item>
-				<title>Safe and Sane Key Paths</title>
+				<title>Compile-time checking plain key path strings</title>
 				<description>&lt;p&gt;&lt;a href=&quot;https://developer.apple.com/library/mac/documentation/cocoa/Conceptual/KeyValueCoding/Articles/KeyValueCoding.html&quot;&gt;Key–value coding&lt;/a&gt; — &lt;code&gt;valueForKeyPath:&lt;/code&gt; and &lt;code&gt;setValue:forKeyPath:&lt;/code&gt; — is very useful for converting data from one format to another, such as copying from a property list-like structure (e.g. deserialized JSON) into model objects proper.
 This avoids a lot of boilerplate typically found in, for example, Java-based systems&lt;sup id=&quot;fnref:java-boilerplate&quot;&gt;&lt;a href=&quot;#fn:java-boilerplate&quot; class=&quot;footnote&quot;&gt;1&lt;/a&gt;&lt;/sup&gt;.&lt;/p&gt;
 
@@ -109,9 +109,9 @@ Or just help get the word out!&lt;/p&gt;
   &lt;/ol&gt;
 &lt;/div&gt;
 </description>
-				<pubDate>Sat, 17 May 2014 17:50:47 -0700</pubDate>
-				<link>http://devetc.org//code/2014/05/17/safe-and-sane-key-paths.html</link>
-				<guid isPermaLink="true">http://devetc.org//code/2014/05/17/safe-and-sane-key-paths.html</guid>
+				<pubDate>Sun, 18 May 2014 13:50:38 -0700</pubDate>
+				<link>http://devetc.org//code/2014/05/18/safe-and-sane-key-paths.html</link>
+				<guid isPermaLink="true">http://devetc.org//code/2014/05/18/safe-and-sane-key-paths.html</guid>
 			</item>
 		
 			<item>
