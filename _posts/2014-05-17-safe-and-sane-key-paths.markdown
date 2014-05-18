@@ -1,9 +1,9 @@
 ---
 layout: post
 title: "Compile-time checking plain key path strings"
-date: 
+date: 2014-05-17 17:50:34 -0700
 categories: code
-tags: git
+tags: cocoa
 subtitle: Safe and sane key paths.
 ---
 
