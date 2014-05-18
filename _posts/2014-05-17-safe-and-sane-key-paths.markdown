@@ -1,10 +1,10 @@
 ---
 layout: post
-title: "Safe and Sane Key Paths"
+title: "Compile-time checking plain key path strings"
 date: 
 categories: code
 tags: git
-subtitle: Dealing with those static strings.
+subtitle: Safe and sane key paths.
 ---
 
 [Key–value coding][kvc] — `valueForKeyPath:` and `setValue:forKeyPath:` — is very useful for converting data from one format to another, such as copying from a property list-like structure (e.g. deserialized JSON) into model objects proper.
