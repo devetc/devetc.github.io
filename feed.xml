@@ -125,7 +125,9 @@ I was surprised to see that v6 did &lt;strong&gt;not&lt;/strong&gt; get its tail
 
 &lt;p&gt;&lt;a href=&quot;/assets/2014-05-24-tail-recursion-objc-and-arc/v6-stack.png&quot;&gt;&lt;img alt=&quot;Key path warnings in Xcode&quot; src=&quot;/assets/2014-05-24-tail-recursion-objc-and-arc/v6-stack.png&quot; width=&quot;640&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
-&lt;p&gt;What is going on? This &lt;em&gt;should&lt;/em&gt; work; there is no work to be done after the recursive call, so why isn’t being optimized? Let’s start by checking that assumption. Dump the assembly (source annotations added by hand):&lt;/p&gt;
+&lt;p&gt;What is going on?
+This &lt;em&gt;should&lt;/em&gt; work; there is no work to be done after the recursive call, so why isn’t being optimized?
+Dump the assembly (source annotations added by hand):&lt;/p&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;nasm&quot;&gt;&lt;span class=&quot;nf&quot;&gt;Tail&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;`&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;ListNode&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;lengthOfListWithHead_v6&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;count&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:]&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;at&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;main.m&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;103&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
 &lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001ae0:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;pushq&lt;/span&gt;  &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rbp&lt;/span&gt;
