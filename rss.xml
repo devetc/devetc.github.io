@@ -7,6 +7,267 @@
 		<atom:link href="http://devetc.org/feed.xml" rel="self" type="application/rss+xml" />
 		
 			<item>
+				<title>Tail Recursion, Objective-C, and ARC</title>
+				<description>&lt;p&gt;Tail recursion is a way to perform recursion without using a stack frame.
+Put another way, tail recursion is writing iterative loops using recursive syntax.&lt;/p&gt;
+
+&lt;p&gt;For a contrived but simple example, consider a linked list definition, with a method to calculate the length:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;objc&quot;&gt;&lt;span class=&quot;k&quot;&gt;@interface&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;ListNode&lt;/span&gt; : &lt;span class=&quot;nc&quot;&gt;NSObject&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@property&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nonatomic&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;copy&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;NSString&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@property&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;nonatomic&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;strong&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ListNode&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSUInteger&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;length&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;A simple, recursive implementation of &lt;code&gt;-length&lt;/code&gt; could be:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;objc&quot;&gt;&lt;span class=&quot;c1&quot;&gt;// v1&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSUInteger&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;length&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;next&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;length&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;This exploits the fact that calls to &lt;code&gt;nil&lt;/code&gt; will return zero&lt;sup id=&quot;fnref:send-to-nil&quot;&gt;&lt;a href=&quot;#fn:send-to-nil&quot; class=&quot;footnote&quot;&gt;1&lt;/a&gt;&lt;/sup&gt;, which happens to work in this specific case because the base case is zero.
+But we’ll need to play with the base case shortly, so let’s make it explicit:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;objc&quot;&gt;&lt;span class=&quot;c1&quot;&gt;// v2&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSUInteger&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;length&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;lengthOfListWithHead&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSUInteger&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;lengthOfListWithHead:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ListNode&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;node&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;node&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// base case&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;lengthOfListWithHead&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;node&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;This code is &lt;strong&gt;not&lt;/strong&gt; tail-recursive, and running it will create a stack frame for each list node.
+This is undesirable because the list may have an arbitrary number of nodes&lt;sup id=&quot;fnref:node-limit&quot;&gt;&lt;a href=&quot;#fn:node-limit&quot; class=&quot;footnote&quot;&gt;2&lt;/a&gt;&lt;/sup&gt;, but the stack we’re using to count them has a relatively small fixed size, so with a sufficiently long list the stack &lt;em&gt;will&lt;/em&gt; overflow and the program will crash.&lt;/p&gt;
+
+&lt;p&gt;Let’s convert this to an iterative implementation:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;objc&quot;&gt;&lt;span class=&quot;c1&quot;&gt;// v3&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSUInteger&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;length&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;lengthOfListWithHead&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSUInteger&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;lengthOfListWithHead:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ListNode&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;node&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;NSUInteger&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// base case&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;while&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;node&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;node&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;node&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Now calculating the length will use a constant number of stack frames&lt;sup id=&quot;fnref:frame-count&quot;&gt;&lt;a href=&quot;#fn:frame-count&quot; class=&quot;footnote&quot;&gt;3&lt;/a&gt;&lt;/sup&gt;, avoiding the problem above.
+Some may argue that the elegance of the recursive approach has been lost, though.&lt;/p&gt;
+
+&lt;p&gt;Note that in each iteration, the code changes &lt;code&gt;node&lt;/code&gt; — a parameter — as well a new local variable.
+We can play with this, making a parameter for &lt;code&gt;count&lt;/code&gt; as well:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;objc&quot;&gt;&lt;span class=&quot;c1&quot;&gt;// v4&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSUInteger&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;length&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;lengthOfListWithHead&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt; &lt;span class=&quot;cm&quot;&gt;/* base case */&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSUInteger&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;lengthOfListWithHead:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ListNode&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;node&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;count:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSUInteger&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;count&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;while&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;node&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;node&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;node&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Now unwrap the &lt;code&gt;while&lt;/code&gt; loop:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;objc&quot;&gt;&lt;span class=&quot;c1&quot;&gt;// v5&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSUInteger&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;lengthOfListWithHead:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ListNode&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;node&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;count:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSUInteger&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;count&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+&lt;span class=&quot;nl&quot;&gt;top:&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;node&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;node&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;node&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;goto&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;top&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Pay attention to the code in &lt;code&gt;else&lt;/code&gt; clause. This technique — setting parameters and jumping to the top of a method — is also known as &lt;strong&gt;calling a method&lt;/strong&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;objc&quot;&gt;&lt;span class=&quot;c1&quot;&gt;// v6&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSUInteger&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;lengthOfListWithHead:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ListNode&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;node&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;count:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSUInteger&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;count&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;node&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;lengthOfListWithHead&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;node&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;next&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;count&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)];&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;This is tail recursion.
+The initial recursive implementation (v2) is &lt;strong&gt;not&lt;/strong&gt; tail-recursive because each pass performs an addition after the recursive call returns.
+The state of this incomplete addition must be stored somewhere, and that &amp;#8220;somewhere&amp;#8221; is the stack.&lt;/p&gt;
+
+&lt;p&gt;Let this soak in for a moment.&lt;/p&gt;
+
+&lt;p&gt;The compiler can see that these two forms are equivalent too.
+With sufficient optimizations enabled — &lt;code&gt;-O1&lt;/code&gt; for clang — the tail-recursive version is compiled into iterative code, using just one stack frame regardless of length.
+This is called &lt;strong&gt;&lt;a href=&quot;http://en.wikipedia.org/wiki/Tail_call&quot;&gt;tail call optimization&lt;/a&gt;&lt;/strong&gt; (TCO).&lt;/p&gt;
+
+&lt;p&gt;I happened across a discussion of &lt;a href=&quot;http://duartes.org/gustavo/blog/post/tail-calls-optimization-es6/&quot;&gt;tail call optimization in ECMAScript / JavaScript&lt;/a&gt; today, and decided to sanity check my understanding, so made a little Xcode project and wrote &lt;a href=&quot;https://gist.github.com/jmah/bf846e6fc39cbc9d23c2&quot;&gt;the code above&lt;/a&gt;.
+I was surprised to see that v6 did &lt;strong&gt;not&lt;/strong&gt; get its tail-call optimized:&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;/assets/2014-05-24-tail-recursion-objc-and-arc/v6-stack.png&quot;&gt;&lt;img alt=&quot;Key path warnings in Xcode&quot; src=&quot;/assets/2014-05-24-tail-recursion-objc-and-arc/v6-stack.png&quot; width=&quot;640&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;What is going on? This &lt;em&gt;should&lt;/em&gt; work; there is no work to be done after the recursive call, so why isn’t being optimized? Let’s start by checking that assumption. Dump the assembly (source annotations added by hand):&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;nasm&quot;&gt;&lt;span class=&quot;nf&quot;&gt;Tail&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;`&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;ListNode&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;lengthOfListWithHead_v6&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;count&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:]&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;at&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;main.m&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;103&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001ae0:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;pushq&lt;/span&gt;  &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rbp&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001ae1:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;movq&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rsp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rbp&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001ae4:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;pushq&lt;/span&gt;  &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;r15&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001ae6:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;pushq&lt;/span&gt;  &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;r14&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001ae8:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;pushq&lt;/span&gt;  &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;r12&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001aea:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;pushq&lt;/span&gt;  &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rbx&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001aeb:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;movq&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rcx&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rbx&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001aee:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;movq&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rdi&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;r14&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;; if (!node)&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001af1:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;testq&lt;/span&gt;  &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rdx&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rdx&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001af4:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;je&lt;/span&gt;     &lt;span class=&quot;mh&quot;&gt;0x100001b37&lt;/span&gt;               &lt;span class=&quot;c1&quot;&gt;; +[ListNode lengthOfListWithHead_v6:count:] + 87 at main.m:108&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001af6:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;movq&lt;/span&gt;   &lt;span class=&quot;mh&quot;&gt;0x8b3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;rip&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rsi&lt;/span&gt;         &lt;span class=&quot;c1&quot;&gt;; &amp;quot;next&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001afd:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;movq&lt;/span&gt;   &lt;span class=&quot;mh&quot;&gt;0x514&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;rip&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;r12&lt;/span&gt;         &lt;span class=&quot;c1&quot;&gt;; (void *)0x00007fff99e68080: objc_msgSend&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001b04:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;movq&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rdx&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rdi&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;;     node.next&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001b07:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;callq&lt;/span&gt;  &lt;span class=&quot;o&quot;&gt;*%&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;r12&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001b0a:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;movq&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rax&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rdi&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001b0d:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;callq&lt;/span&gt;  &lt;span class=&quot;mh&quot;&gt;0x100001c9a&lt;/span&gt;               &lt;span class=&quot;c1&quot;&gt;; symbol stub for: objc_retainAutoreleasedReturnValue&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001b12:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;movq&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rax&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;r15&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;;     (count + 1)&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001b15:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;incq&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rbx&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001b18:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;movq&lt;/span&gt;   &lt;span class=&quot;mh&quot;&gt;0x8c1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;rip&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rsi&lt;/span&gt;         &lt;span class=&quot;c1&quot;&gt;; &amp;quot;lengthOfListWithHead_v6:count:&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001b1f:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;movq&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;r14&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rdi&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001b22:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;movq&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;r15&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rdx&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001b25:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;movq&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rbx&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rcx&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;;     [self lengthOfListWithHead_v6:node.next count:(count + 1)];&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001b28:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;callq&lt;/span&gt;  &lt;span class=&quot;o&quot;&gt;*%&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;r12&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001b2b:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;movq&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rax&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rbx&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001b2e:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;movq&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;r15&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rdi&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001b31:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;callq&lt;/span&gt;  &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x4e9&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;rip&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;              &lt;span class=&quot;c1&quot;&gt;; (void *)0x00007fff99e6b0d0: objc_release&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;;     return count&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001b37:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;movq&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rbx&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rax&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001b3a:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;popq&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rbx&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001b3b:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;popq&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;r12&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001b3d:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;popq&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;r14&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001b3f:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;popq&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;r15&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001b41:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;popq&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rbp&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001b42:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;ret&lt;/span&gt;    
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;The problem is revealed: there &lt;strong&gt;is&lt;/strong&gt; work to be done after the recursive call: automatic reference counting inserted a release call for the value returned from &lt;code&gt;node.next&lt;/code&gt;. If we were writing this with manual retain/release, one wouldn’t insert any memory management calls into this at all, and it would work because &lt;code&gt;-next&lt;/code&gt; returns an autoreleased object. However when this is compiled under ARC, calls to &lt;code&gt;objc_retainAutoreleasedReturnValue&lt;/code&gt; and &lt;code&gt;objc_release&lt;/code&gt; are inserted to allow for another optimization — having the return value skip the autorelease pool entirely. Unfortunately in this case, it’s conflicting with tail call optimization.&lt;/p&gt;
+
+&lt;p&gt;One way to avoid this is to use the instance variable directly:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;objc&quot;&gt;&lt;span class=&quot;c1&quot;&gt;// v7&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSUInteger&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;length&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;lengthOfListWithHead&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSUInteger&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;lengthOfListWithHead:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ListNode&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;node&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;count:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSUInteger&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;count&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;node&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;lengthOfListWithHead&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;node&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_next&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;count&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)];&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;This actually generates much more compact assembly:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;nasm&quot;&gt;&lt;span class=&quot;nf&quot;&gt;Tail&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;`&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;ListNode&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;lengthOfListWithHead_v7&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;count&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:]&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;at&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;main.m&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;115&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001a50:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;pushq&lt;/span&gt;  &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rbp&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001a51:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;movq&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rsp&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rbp&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001a54:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;testq&lt;/span&gt;  &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rdx&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rdx&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001a57:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;je&lt;/span&gt;     &lt;span class=&quot;mh&quot;&gt;0x100001a75&lt;/span&gt;               &lt;span class=&quot;c1&quot;&gt;; +[ListNode lengthOfListWithHead_v7:count:] + 37 at main.m:120&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001a59:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;movq&lt;/span&gt;   &lt;span class=&quot;mh&quot;&gt;0xaf0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;rip&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rax&lt;/span&gt;         &lt;span class=&quot;c1&quot;&gt;; ListNode._next&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001a60:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;movq&lt;/span&gt;   &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rdx&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rax&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rdx&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001a64:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;incq&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rcx&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001a67:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;movq&lt;/span&gt;   &lt;span class=&quot;mh&quot;&gt;0x9b2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;rip&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rsi&lt;/span&gt;         &lt;span class=&quot;c1&quot;&gt;; &amp;quot;lengthOfListWithHead_v7:count:&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001a6e:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;popq&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rbp&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;; The “jump” instead of “call” shows tail call optimization in effect&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001a6f:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;jmpq&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;mh&quot;&gt;0x5a3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;rip&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;              &lt;span class=&quot;c1&quot;&gt;; (void *)0x00007fff99e68080: objc_msgSend&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001a75:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;movq&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rcx&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rax&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001a78:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;popq&lt;/span&gt;   &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;rbp&lt;/span&gt;
+&lt;span class=&quot;err&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;x100001a79:&lt;/span&gt;  &lt;span class=&quot;nf&quot;&gt;ret&lt;/span&gt;    
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;However the behavior is slightly different: &lt;code&gt;node&lt;/code&gt; could be an instance of a &lt;code&gt;ListNode&lt;/code&gt; subclass that has overridden &lt;code&gt;next&lt;/code&gt; to return something different. The compiler, being conservative, won’t replace the message send with an instance variable access for this reason.&lt;/p&gt;
+
+&lt;p&gt;So depending on the use case, we might choose to:&lt;/p&gt;
+
+&lt;ol&gt;&lt;!-- Switch to HTML so code block can be in the li, sigh --&gt;
+&lt;li&gt;
+Assume &lt;code&gt;next&lt;/code&gt; isn’t overridden, use the direct ivar access, and get tail call optimization.
+&lt;/li&gt;
+
+&lt;li&gt;
+Try to handle both situations:
+
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;objc&quot;&gt;&lt;span class=&quot;c1&quot;&gt;// v8&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSUInteger&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;lengthOfListWithHead:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ListNode&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;node&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;count:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSUInteger&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;count&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;!&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;node&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;([&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;node&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;isMemberOfClass&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;])&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;lengthOfListWithHead&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;node&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_next&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;count&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)];&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;lengthOfListWithHead&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;node&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;next&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;count&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)];&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+  
+&lt;p&gt;
+However I was unable to get this to work, even trying a variety of ways to check the class; there would always be unconditional release calls inserted at the end of the method that thwarted TCO.
+&lt;/p&gt;
+&lt;/li&gt;
+
+&lt;li&gt;
+Compile this code without ARC, allowing TCO at the cost of autorelease optimization.
+
+&lt;p&gt;
+But the &lt;strong&gt;best&lt;/strong&gt; choice is:
+&lt;/p&gt;
+&lt;/li&gt;
+
+&lt;li&gt;
+Admit defeat, and just use explicit iteration.
+&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;In an ARC environment, tail call optimization (and thus tail recursion) is too fragile. Don’t rely on it.&lt;/p&gt;
+
+&lt;div class=&quot;footnotes&quot;&gt;
+  &lt;ol&gt;
+    &lt;li id=&quot;fn:send-to-nil&quot;&gt;
+      &lt;p&gt;See &lt;a href=&quot;https://developer.apple.com/library/ios/documentation/Cocoa/Conceptual/ProgrammingWithObjectiveC/WorkingwithObjects/WorkingwithObjects.html#//apple_ref/doc/uid/TP40011210-CH4-SW22&quot;&gt;Programming with Objective-C: Working with nil&lt;/a&gt;&lt;a href=&quot;#fnref:send-to-nil&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:node-limit&quot;&gt;
+      &lt;p&gt;As written here, where every node is an object in memory, of course there is a limit to those too. Both 32-bit and 64-bit address spaces allow &lt;em&gt;much&lt;/em&gt; longer lists than the stack could could accommodate, though.&lt;a href=&quot;#fnref:node-limit&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:frame-count&quot;&gt;
+      &lt;p&gt;Naively this will use 2 frames, one for &lt;code&gt;-[ListNode length]&lt;/code&gt; and one for &lt;code&gt;+[ListNode lengthOfListWithHead:]&lt;/code&gt;. If the tail call in &lt;code&gt;-[ListNode length]&lt;/code&gt; can be turned into a jump, there may only be one frame; but it likely can’t be. See &lt;a href=&quot;http://www.complang.tuwien.ac.at/schani/diplarb.ps&quot;&gt;Proper Tail Recursion in C&lt;/a&gt;.&lt;a href=&quot;#fnref:frame-count&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+  &lt;/ol&gt;
+&lt;/div&gt;
+</description>
+				<pubDate>Sat, 24 May 2014 23:26:15 -0700</pubDate>
+				<link>http://devetc.org//code/2014/05/24/tail-recursion-objc-and-arc.html</link>
+				<guid isPermaLink="true">http://devetc.org//code/2014/05/24/tail-recursion-objc-and-arc.html</guid>
+			</item>
+		
+			<item>
 				<title>Compile-time checking plain key path strings</title>
 				<description>&lt;p&gt;&lt;a href=&quot;https://developer.apple.com/library/mac/documentation/cocoa/Conceptual/KeyValueCoding/Articles/KeyValueCoding.html&quot;&gt;Key–value coding&lt;/a&gt; — &lt;code&gt;valueForKeyPath:&lt;/code&gt; and &lt;code&gt;setValue:forKeyPath:&lt;/code&gt; — is very useful for converting data from one format to another, such as copying from a property list-like structure (e.g. deserialized JSON) into model objects proper.
 This avoids a lot of boilerplate typically found in, for example, Java-based systems&lt;sup id=&quot;fnref:java-boilerplate&quot;&gt;&lt;a href=&quot;#fn:java-boilerplate&quot; class=&quot;footnote&quot;&gt;1&lt;/a&gt;&lt;/sup&gt;.&lt;/p&gt;
