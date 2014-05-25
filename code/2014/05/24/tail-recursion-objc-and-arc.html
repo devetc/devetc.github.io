@@ -204,7 +204,10 @@ Dump the assembly (source annotations added by hand):</p>
 <span class="err">0</span><span class="nl">x100001b42:</span>  <span class="nf">ret</span>    
 </code></pre></div>
 
-<p>The problem is revealed: there <strong>is</strong> work to be done after the recursive call: automatic reference counting inserted a release call for the value returned from <code>node.next</code>. If we were writing this with manual retain/release, one wouldn’t insert any memory management calls into this at all, and it would work because <code>-next</code> returns an autoreleased object. However when this is compiled under ARC, calls to <code>objc_retainAutoreleasedReturnValue</code> and <code>objc_release</code> are inserted to allow for another optimization — having the return value skip the autorelease pool entirely. Unfortunately in this case, it’s conflicting with tail call optimization.</p>
+<p>The problem is revealed: there <strong>is</strong> work to be done after the recursive call: automatic reference counting inserted a release call for the value returned from <code>node.next</code>.
+If we were writing this with manual retain/release, one wouldn’t insert any memory management calls into this at all, and because <code>-next</code> returns an autoreleased object.
+However when this is compiled under ARC, calls to <code>objc_retainAutoreleasedReturnValue</code> and <code>objc_release</code> are inserted to allow for another optimization — having the return value skip the autorelease pool entirely.
+Unfortunately in this case, it’s conflicting with tail call optimization.</p>
 
 <p>One way to avoid this is to use the instance variable directly:</p>
 
