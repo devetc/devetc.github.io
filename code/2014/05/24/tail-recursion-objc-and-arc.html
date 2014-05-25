@@ -162,7 +162,7 @@ I was surprised to see that v6 did <strong>not</strong> get its tail-call optimi
 
 <p>What is going on?
 This <em>should</em> work; there is no work to be done after the recursive call, so why isn’t being optimized?
-Dump the assembly (source annotations added by hand):</p>
+Dump the assembly! (Source annotations added by hand.)</p>
 
 <div class="highlight"><pre><code class="nasm"><span class="nf">Tail</span><span class="err">`</span><span class="o">+</span><span class="p">[</span><span class="nv">ListNode</span> <span class="nv">lengthOfListWithHead_v6</span><span class="p">:</span><span class="nv">count</span><span class="p">:]</span> <span class="nv">at</span> <span class="nv">main.m</span><span class="p">:</span><span class="mi">103</span><span class="p">:</span>
 <span class="err">0</span><span class="nl">x100001ae0:</span>  <span class="nf">pushq</span>  <span class="o">%</span><span class="nb">rbp</span>
