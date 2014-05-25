@@ -170,7 +170,7 @@ Dump the assembly (source annotations added by hand):&lt;/p&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 &lt;p&gt;The problem is revealed: there &lt;strong&gt;is&lt;/strong&gt; work to be done after the recursive call: automatic reference counting inserted a release call for the value returned from &lt;code&gt;node.next&lt;/code&gt;.
-If we were writing this with manual retain/release, one wouldn’t insert any memory management calls into this at all, and because &lt;code&gt;-next&lt;/code&gt; returns an autoreleased object.
+If we were writing this with manual retain/release, one wouldn’t insert any memory management calls into this at all, because &lt;code&gt;-next&lt;/code&gt; returns an autoreleased object.
 However when this is compiled under ARC, calls to &lt;code&gt;objc_retainAutoreleasedReturnValue&lt;/code&gt; and &lt;code&gt;objc_release&lt;/code&gt; are inserted to allow for another optimization — having the return value skip the autorelease pool entirely.
 Unfortunately in this case, it’s conflicting with tail call optimization.&lt;/p&gt;
 
