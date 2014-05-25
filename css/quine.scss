@@ -161,11 +161,5 @@ a:after { content: "</a>"; @include tag; }
 sup a { &:before, &:after { content: none; } }
 pre a { &:before, &:after { content: none; } }
 
-em:before { content: "<em>"; @include tag; }
-em:after { content: "</em>"; @include tag; }
-
-sup em { &:before, &:after { content: none; } }
-pre em { &:before, &:after { content: none; } }
-
 
 a.reversefootnote { &:before, &:after { content: none; } }
