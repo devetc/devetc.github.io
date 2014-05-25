@@ -172,7 +172,7 @@ Dump the assembly! (Source annotations added by hand.)&lt;/p&gt;
 &lt;p&gt;The problem is revealed: there &lt;strong&gt;is&lt;/strong&gt; work to be done after the recursive call: automatic reference counting inserted a release call for the value returned from &lt;code&gt;node.next&lt;/code&gt;.
 If we were writing this with manual retain/release, one wouldn’t insert any memory management calls into this at all, because &lt;code&gt;-next&lt;/code&gt; returns an autoreleased object.
 However when this is compiled under ARC, calls to &lt;code&gt;objc_retainAutoreleasedReturnValue&lt;/code&gt; and &lt;code&gt;objc_release&lt;/code&gt; are inserted to allow for another optimization — having the return value skip the autorelease pool entirely.
-Unfortunately in this case, it’s conflicting with tail call optimization.&lt;/p&gt;
+Unfortunately in this case, it conflicts with tail call optimization.&lt;/p&gt;
 
 &lt;p&gt;One way to avoid this is to use the instance variable directly:&lt;/p&gt;
 
@@ -213,7 +213,7 @@ Unfortunately in this case, it’s conflicting with tail call optimization.&lt;/
 
 &lt;ol&gt;&lt;!-- Switch to HTML so code block can be in the li, sigh --&gt;
 &lt;li&gt;
-Assume &lt;code&gt;next&lt;/code&gt; isn’t overridden, use the direct ivar access, and get tail call optimization.
+Assume &lt;code&gt;next&lt;/code&gt; isn’t overridden, access the ivar directly, and get tail call optimization.
 &lt;/li&gt;
 
 &lt;li&gt;
@@ -233,7 +233,7 @@ Try to handle both situations:
 
   
 &lt;p&gt;
-Unfortunately I was unable to get this to work, even trying a variety of ways to check the class; there would always be unconditional release calls inserted at the end of the method that thwarted TCO.
+Unfortunately I was unable to get this to work, even trying a variety of ways to check the class there would always be unconditional release calls inserted at the end of the method that thwarted TCO.
 &lt;/p&gt;
 &lt;/li&gt;
 

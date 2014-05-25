@@ -207,7 +207,7 @@ Dump the assembly! (Source annotations added by hand.)</p>
 <p>The problem is revealed: there <strong>is</strong> work to be done after the recursive call: automatic reference counting inserted a release call for the value returned from <code>node.next</code>.
 If we were writing this with manual retain/release, one wouldn’t insert any memory management calls into this at all, because <code>-next</code> returns an autoreleased object.
 However when this is compiled under ARC, calls to <code>objc_retainAutoreleasedReturnValue</code> and <code>objc_release</code> are inserted to allow for another optimization — having the return value skip the autorelease pool entirely.
-Unfortunately in this case, it’s conflicting with tail call optimization.</p>
+Unfortunately in this case, it conflicts with tail call optimization.</p>
 
 <p>One way to avoid this is to use the instance variable directly:</p>
 
@@ -248,7 +248,7 @@ Unfortunately in this case, it’s conflicting with tail call optimization.</p>
 
 <ol><!-- Switch to HTML so code block can be in the li, sigh -->
 <li>
-Assume <code>next</code> isn’t overridden, use the direct ivar access, and get tail call optimization.
+Assume <code>next</code> isn’t overridden, access the ivar directly, and get tail call optimization.
 </li>
 
 <li>
@@ -268,7 +268,7 @@ Try to handle both situations:
 
   
 <p>
-Unfortunately I was unable to get this to work, even trying a variety of ways to check the class; there would always be unconditional release calls inserted at the end of the method that thwarted TCO.
+Unfortunately I was unable to get this to work, even trying a variety of ways to check the class there would always be unconditional release calls inserted at the end of the method that thwarted TCO.
 </p>
 </li>
 
