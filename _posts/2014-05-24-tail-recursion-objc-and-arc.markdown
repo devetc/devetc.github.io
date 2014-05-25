@@ -137,7 +137,7 @@ I was surprised to see that v6 did **not** get its tail-call optimized:
 
 What is going on?
 This *should* work; there is no work to be done after the recursive call, so why isn’t being optimized?
-Dump the assembly (source annotations added by hand):
+Dump the assembly! (Source annotations added by hand.)
 
 {% highlight nasm %}
 Tail`+[ListNode lengthOfListWithHead_v6:count:] at main.m:103:
