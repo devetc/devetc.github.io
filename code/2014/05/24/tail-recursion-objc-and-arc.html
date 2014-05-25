@@ -223,7 +223,7 @@ Unfortunately in this case, it’s conflicting with tail call optimization.</p>
 <span class="p">}</span>
 </code></pre></div>
 
-<p>This actually generates much more compact assembly:</p>
+<p>This generates much more compact assembly:</p>
 
 <div class="highlight"><pre><code class="nasm"><span class="nf">Tail</span><span class="err">`</span><span class="o">+</span><span class="p">[</span><span class="nv">ListNode</span> <span class="nv">lengthOfListWithHead_v7</span><span class="p">:</span><span class="nv">count</span><span class="p">:]</span> <span class="nv">at</span> <span class="nv">main.m</span><span class="p">:</span><span class="mi">115</span><span class="p">:</span>
 <span class="err">0</span><span class="nl">x100001a50:</span>  <span class="nf">pushq</span>  <span class="o">%</span><span class="nb">rbp</span>
@@ -268,7 +268,7 @@ Try to handle both situations:
 
   
 <p>
-However I was unable to get this to work, even trying a variety of ways to check the class; there would always be unconditional release calls inserted at the end of the method that thwarted TCO.
+Unfortunately I was unable to get this to work, even trying a variety of ways to check the class; there would always be unconditional release calls inserted at the end of the method that thwarted TCO.
 </p>
 </li>
 
