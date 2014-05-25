@@ -135,7 +135,9 @@ I was surprised to see that v6 did **not** get its tail-call optimized:
 
 <a href="/assets/2014-05-24-tail-recursion-objc-and-arc/v6-stack.png"><img alt="Key path warnings in Xcode" src="/assets/2014-05-24-tail-recursion-objc-and-arc/v6-stack.png" width="640"></a>
 
-What is going on? This *should* work; there is no work to be done after the recursive call, so why isn’t being optimized? Let’s start by checking that assumption. Dump the assembly (source annotations added by hand):
+What is going on?
+This *should* work; there is no work to be done after the recursive call, so why isn’t being optimized?
+Dump the assembly (source annotations added by hand):
 
 {% highlight nasm %}
 Tail`+[ListNode lengthOfListWithHead_v6:count:] at main.m:103:
