@@ -180,7 +180,10 @@ Tail`+[ListNode lengthOfListWithHead_v6:count:] at main.m:103:
 0x100001b42:  ret    
 {% endhighlight %}
 
-The problem is revealed: there **is** work to be done after the recursive call: automatic reference counting inserted a release call for the value returned from `node.next`. If we were writing this with manual retain/release, one wouldn’t insert any memory management calls into this at all, and it would work because `-next` returns an autoreleased object. However when this is compiled under ARC, calls to `objc_retainAutoreleasedReturnValue` and `objc_release` are inserted to allow for another optimization — having the return value skip the autorelease pool entirely. Unfortunately in this case, it’s conflicting with tail call optimization.
+The problem is revealed: there **is** work to be done after the recursive call: automatic reference counting inserted a release call for the value returned from `node.next`.
+If we were writing this with manual retain/release, one wouldn’t insert any memory management calls into this at all, and because `-next` returns an autoreleased object.
+However when this is compiled under ARC, calls to `objc_retainAutoreleasedReturnValue` and `objc_release` are inserted to allow for another optimization — having the return value skip the autorelease pool entirely.
+Unfortunately in this case, it’s conflicting with tail call optimization.
 
 One way to avoid this is to use the instance variable directly:
 
