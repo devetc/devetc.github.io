@@ -200,7 +200,7 @@ One way to avoid this is to use the instance variable directly:
 }
 {% endhighlight %}
 
-This actually generates much more compact assembly:
+This generates much more compact assembly:
 
 {% highlight nasm %}
 Tail`+[ListNode lengthOfListWithHead_v7:count:] at main.m:115:
@@ -245,7 +245,7 @@ Try to handle both situations:
 {% endhighlight %}
   
 <p>
-However I was unable to get this to work, even trying a variety of ways to check the class; there would always be unconditional release calls inserted at the end of the method that thwarted TCO.
+Unfortunately I was unable to get this to work, even trying a variety of ways to check the class; there would always be unconditional release calls inserted at the end of the method that thwarted TCO.
 </p>
 </li>
 
