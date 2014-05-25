@@ -226,7 +226,7 @@ So depending on the use case, we might choose to:
 
 <ol><!-- Switch to HTML so code block can be in the li, sigh -->
 <li>
-Assume <code>next</code> isn’t overridden, use the direct ivar access, and get tail call optimization.
+Assume <code>next</code> isn’t overridden, access the ivar directly, and get tail call optimization.
 </li>
 
 <li>
@@ -245,7 +245,7 @@ Try to handle both situations:
 {% endhighlight %}
   
 <p>
-Unfortunately I was unable to get this to work, even trying a variety of ways to check the class; there would always be unconditional release calls inserted at the end of the method that thwarted TCO.
+Unfortunately I was unable to get this to work, even trying a variety of ways to check the class there would always be unconditional release calls inserted at the end of the method that thwarted TCO.
 </p>
 </li>
 
