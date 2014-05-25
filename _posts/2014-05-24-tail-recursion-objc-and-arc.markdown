@@ -171,7 +171,6 @@ Tail`+[ListNode lengthOfListWithHead_v6:count:] at main.m:103:
 0x100001b2b:  movq   %rax, %rbx
 0x100001b2e:  movq   %r15, %rdi
 0x100001b31:  callq  *0x4e9(%rip)              ; (void *)0x00007fff99e6b0d0: objc_release
-    ;     return count
 0x100001b37:  movq   %rbx, %rax
 0x100001b3a:  popq   %rbx
 0x100001b3b:  popq   %r12
