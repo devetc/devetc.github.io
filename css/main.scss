@@ -54,6 +54,10 @@ a {
 	}
 }
 
+h1 {
+	font-size: 1.5em;
+}
+
 sup {
 	padding-left: 4px;
 	padding-right: 2px;
@@ -127,10 +131,18 @@ footer {
 
 ol.posts {
 	list-style-type: none;
-	margin-bottom: 2em;
 
 	a {
-		font-size: 1.2em;
+		text-decoration: none;
+		font-size: 1.5em;
+		font-weight: bold;
+
+		&:visited {
+			color: #004;
+		}
+		&:hover {
+			text-decoration: underline;
+		}
 	}
 
 	li {
