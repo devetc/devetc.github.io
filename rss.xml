@@ -163,6 +163,9 @@ The label&amp;#8217;s intrinsic size will do the rest.&lt;/p&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 &lt;p&gt;All these examples are available in the &lt;a href=&quot;https://github.com/jmah/WrapDemo&quot;&gt;WrapDemo&lt;/a&gt; project on GitHub.&lt;/p&gt;
+
+&lt;p&gt;Thanks to Kevin Cathey for his ongoing help and insights with Auto Layout.&lt;/p&gt;
+
 </description>
 				<pubDate>Mon, 07 Jul 2014 11:55:02 -0700</pubDate>
 				<link>http://devetc.org/code/2014/07/07/auto-layout-and-views-that-wrap.html</link>
