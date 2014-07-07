@@ -7,6 +7,169 @@
 		<atom:link href="http://devetc.orgfeed.xml" rel="self" type="application/rss+xml" />
 		
 			<item>
+				<title>Auto Layout and Views that Wrap</title>
+				<description>&lt;p&gt;Out of the box, wrapped text in a &lt;code&gt;UILabel&lt;/code&gt; (or &lt;code&gt;NSTextField&lt;/code&gt; on the Mac) will behave like this when its container is resized:&lt;/p&gt;
+
+&lt;!-- http://www.gfycat.com/HeavenlyOrangeAtlanticspadefish --&gt;
+&lt;video width=&quot;318&quot; height=&quot;190&quot; autoplay=&quot;&quot; loop=&quot;&quot; muted=&quot;muted&quot; poster=&quot;/assets/2014-07-07-auto-layout-and-views-that-wrap/label-default-resize-poster.png&quot;&gt;
+	&lt;source src=&quot;/assets/2014-07-07-auto-layout-and-views-that-wrap/label-default-resize.webm&quot; type=&quot;video/webm&quot; /&gt;
+	&lt;source src=&quot;/assets/2014-07-07-auto-layout-and-views-that-wrap/label-default-resize.mp4&quot; type=&quot;video/mp4&quot; /&gt;
+	&lt;img width=&quot;318&quot; height=&quot;190&quot; src=&quot;/assets/2014-07-07-auto-layout-and-views-that-wrap/label-default-resize.gif&quot; /&gt;
+&lt;/video&gt;
+
+&lt;p&gt;This article explains how to get the following behavior:&lt;/p&gt;
+
+&lt;!-- http://www.gfycat.com/UnimportantNervousJackrabbit --&gt;
+&lt;video id=&quot;gfyVid1&quot; class=&quot;gfyVid&quot; width=&quot;318&quot; height=&quot;236&quot; autoplay=&quot;&quot; loop=&quot;&quot; muted=&quot;muted&quot; style=&quot;display: block;&quot; poster=&quot;/assets/2014-07-07-auto-layout-and-views-that-wrap/label-dynamic-preferred-max-layout-width-poster.png&quot;&gt;
+	&lt;source id=&quot;webmsource&quot; src=&quot;/assets/2014-07-07-auto-layout-and-views-that-wrap/label-dynamic-preferred-max-layout-width.webm&quot; type=&quot;video/webm&quot; /&gt;
+	&lt;source id=&quot;mp4source&quot; src=&quot;/assets/2014-07-07-auto-layout-and-views-that-wrap/label-dynamic-preferred-max-layout-width.mp4&quot; type=&quot;video/mp4&quot; /&gt;
+	&lt;img width=&quot;318&quot; height=&quot;236&quot; src=&quot;/assets/2014-07-07-auto-layout-and-views-that-wrap/label-dynamic-preferred-max-layout-width.gif&quot; /&gt;
+&lt;/video&gt;
+
+&lt;h2 id=&quot;why-it-doesnt-just-work&quot;&gt;Why it doesn&amp;#8217;t &amp;#8220;just work&amp;#8221;&lt;/h2&gt;
+
+&lt;p&gt;In auto layout, views have the notion of &amp;#8220;intrinsic content size&amp;#8221;:
+A width and height (either, both, or neither) that fits the view well.
+The layout system will try to give the view at least this much space with &amp;#8220;high&amp;#8221; priority, configurable as the view&amp;#8217;s &amp;#8220;compression resistance&amp;#8221;.&lt;/p&gt;
+
+&lt;p&gt;The layout system treats this width and height independently.
+For example, if a segmented control&amp;#8217;s text is long enough that it can&amp;#8217;t fit horizontally, its intrinsic height will still try to be satisfied.
+This works great for views that have some defined size, such as buttons, images, sliders, and small labels.&lt;/p&gt;
+
+&lt;p&gt;But views that wrap have more complex behavior: their width and height interact.
+They can trade width for height, and vice-versa.&lt;/p&gt;
+
+&lt;p&gt;This can&amp;#8217;t be expressed purely with constraints.
+&lt;strong&gt;Proof:&lt;/strong&gt;
+Consider a simplified model, ignoring word breaking and that complicated text stuff.
+We&amp;#8217;d like a view to have constant area, i.e. &lt;em&gt;width&lt;/em&gt; × &lt;em&gt;height&lt;/em&gt; = &lt;em&gt;constant&lt;/em&gt;.
+Constraints must be of the form &lt;em&gt;attribute1&lt;/em&gt; = &lt;em&gt;multiplier&lt;/em&gt; × &lt;em&gt;attribute2&lt;/em&gt; + &lt;em&gt;constant&lt;/em&gt; (so the system can provide certain performance guarantees).
+There is no way to represent the first equation with the second; hence there is no way to represent wrapping purely with constraints.&lt;/p&gt;
+
+&lt;p&gt;We can&amp;#8217;t leave both width and height as free variables to be solved by the constraint engine.
+The simplest approach — and the one that Apple uses — is to fix the width, and leave the height variable (dependent on the label&amp;#8217;s content).&lt;/p&gt;
+
+&lt;h2 id=&quot;preferred-max-layout-width&quot;&gt;Preferred Max Layout Width&lt;/h2&gt;
+
+&lt;p&gt;Both &lt;code&gt;UILabel&lt;/code&gt; and &lt;code&gt;NSTextField&lt;/code&gt; have the &lt;code&gt;preferredMaxLayoutWidth&lt;/code&gt; property.
+If this is non-zero, it&amp;#8217;s used as the maximum width of the label&amp;#8217;s intrinsic content size.
+When the label has more text than can fit in that width, the label will return a larger value for its intrinsic height.
+(If the label has only a little text, the label&amp;#8217;s intrinsic width can be less than its preferred max layout width.)&lt;/p&gt;
+
+&lt;p&gt;On iOS, &lt;code&gt;UILabel&lt;/code&gt;&amp;#8217;s preferred max layout width is set to the width of the label as it appears in the nib (even if it becomes a different size at runtime).&lt;/p&gt;
+
+&lt;p&gt;On OS X, &lt;code&gt;NSTextField&lt;/code&gt; can optionally have its preferred max layout width set to the first size it takes on &lt;em&gt;after&lt;/em&gt; layout.&lt;/p&gt;
+
+&lt;p&gt;If the space available to the label can change, as in the demo at the top, or if the container can be resized (or rotated), you&amp;#8217;ll need to change the preferred max layout width dynamically.&lt;/p&gt;
+
+&lt;h2 id=&quot;adjusting-the-preferred-max-layout-width&quot;&gt;Adjusting the Preferred Max Layout Width&lt;/h2&gt;
+
+&lt;p&gt;To dynamically set &lt;code&gt;preferredMaxLayoutWidth&lt;/code&gt;, you&amp;#8217;ll need to override &lt;code&gt;-[UIView layoutSubviews]&lt;/code&gt; or &lt;code&gt;-[NSView layout]&lt;/code&gt; of the label&amp;#8217;s superview.
+To get the behavior at the top, set the preferred max layout width to the width available to the label.&lt;/p&gt;
+
+&lt;p&gt;The example label has these constraints:&lt;/p&gt;
+
+&lt;p&gt;&lt;img width=&quot;356&quot; height=&quot;178&quot; alt=&quot;Label constraints&quot; src=&quot;/assets/2014-07-07-auto-layout-and-views-that-wrap/label-constraints.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The fixed left and right constraints make it take up all available horizontal space.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Please don&amp;#8217;t&lt;/em&gt; hard-code numerical constants in your code.
+They&amp;#8217;ll make your layout overly fragile.
+Instead, you can use the layout system to your advantage and do two passes.&lt;/p&gt;
+
+&lt;p&gt;The second animation at the top uses the following code in the label&amp;#8217;s superview:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;objc&quot;&gt;&lt;span class=&quot;k&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;layoutSubviews&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;super&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;layoutSubviews&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+
+    &lt;span class=&quot;n&quot;&gt;CGFloat&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;availableLabelWidth&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;label&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;frame&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;size&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;width&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;label&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;preferredMaxLayoutWidth&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;availableLabelWidth&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+    &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;super&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;layoutSubviews&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;The first call to &lt;code&gt;[super layoutSubviews]&lt;/code&gt; will evaluate the constraints on the label (since it&amp;#8217;s a direct subview) and change its frame accordingly.
+At this point the width is useful, but the height is not; the height was set using the label&amp;#8217;s intrinsic content size, which in turn relied on a preferred max layout width value that is now stale.&lt;/p&gt;
+
+&lt;p&gt;Now we know the actual width of the label, we set that as its max layout width.
+Internally, this causes the label to invalidate its intrinsic content size; when it&amp;#8217;s next queried, it will have the accurate height for its current width.
+With all layout information in place, we call &lt;code&gt;[super layoutSubviews]&lt;/code&gt; again.&lt;/p&gt;
+
+&lt;h2 id=&quot;creating-your-own-views-that-wrap&quot;&gt;Creating your own views that wrap&lt;/h2&gt;
+
+&lt;p&gt;The &lt;a href=&quot;https://github.com/jmah/WrapDemo&quot;&gt;WrapDemo&lt;/a&gt; project contains a view that wraps like &lt;code&gt;UILabel&lt;/code&gt; / &lt;code&gt;NSTextField&lt;/code&gt;.
+It has a &lt;code&gt;preferredMaxLayoutWidth&lt;/code&gt; property that the superview sets, and a shared layout method (&lt;code&gt;-[MyWrappingView enumerateItemRectsForLayoutWidth:usingBlock:]&lt;/code&gt;).
+This method is called by both &lt;code&gt;-intrinsicContentSize&lt;/code&gt; to calculate the size based on the preferred max layout width, and &lt;code&gt;-layoutSubviews&lt;/code&gt; to position the colored items based on the actual view size.&lt;/p&gt;
+
+&lt;!-- http://www.gfycat.com/TidyQuerulousAzurevase --&gt;
+&lt;video width=&quot;318&quot; height=&quot;168&quot; autoplay=&quot;&quot; loop=&quot;&quot; muted=&quot;muted&quot; poster=&quot;/assets/2014-07-07-auto-layout-and-views-that-wrap/custom-wrapping-view-poster.png&quot;&gt;
+	&lt;source src=&quot;/assets/2014-07-07-auto-layout-and-views-that-wrap/custom-wrapping-view.webm&quot; type=&quot;video/webm&quot; /&gt;
+	&lt;source src=&quot;/assets/2014-07-07-auto-layout-and-views-that-wrap/custom-wrapping-view.mp4&quot; type=&quot;video/mp4&quot; /&gt;
+	&lt;img width=&quot;318&quot; height=&quot;168&quot; src=&quot;/assets/2014-07-07-auto-layout-and-views-that-wrap/custom-wrapping-view.gif&quot; /&gt;
+&lt;/video&gt;
+
+&lt;h2 id=&quot;shrink-wrapping&quot;&gt;Shrink-Wrapping&lt;/h2&gt;
+
+&lt;p&gt;Finally, there are times where we&amp;#8217;d like to combine wrapping with &amp;#8220;shrink to fit&amp;#8221; behavior (aka &amp;#8220;content hugging&amp;#8221;).
+Instead of fixing the label&amp;#8217;s leading and trailing space, we can instead add constraints to make it centered and &lt;em&gt;at least&lt;/em&gt; some distance from the edge.&lt;/p&gt;
+
+&lt;p&gt;&lt;img width=&quot;356&quot; height=&quot;110&quot; alt=&quot;Label shrink-wrap constraints&quot; src=&quot;/assets/2014-07-07-auto-layout-and-views-that-wrap/shrink-label-constraints.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Combining this with the above &lt;code&gt;-layoutSubviews&lt;/code&gt; implementation gives the following behavior:&lt;/p&gt;
+
+&lt;!-- http://www.gfycat.com/ArtisticActualBuzzard --&gt;
+&lt;video width=&quot;318&quot; height=&quot;146&quot; autoplay=&quot;&quot; loop=&quot;&quot; muted=&quot;muted&quot; poster=&quot;/assets/2014-07-07-auto-layout-and-views-that-wrap/shrink-wrap-buggy-poster.png&quot;&gt;
+	&lt;source src=&quot;/assets/2014-07-07-auto-layout-and-views-that-wrap/shrink-wrap-buggy.webm&quot; type=&quot;video/webm&quot; /&gt;
+	&lt;source src=&quot;/assets/2014-07-07-auto-layout-and-views-that-wrap/shrink-wrap-buggy.mp4&quot; type=&quot;video/mp4&quot; /&gt;
+	&lt;img width=&quot;318&quot; height=&quot;146&quot; src=&quot;/assets/2014-07-07-auto-layout-and-views-that-wrap/shrink-wrap-buggy.gif&quot; /&gt;
+&lt;/video&gt;
+
+&lt;p&gt;The space to the edge is satisfied if it&amp;#8217;s greater-than-or-equal-to the constant — it only ever pushes the label in, it never pulls it out.
+What we want to do is find the width that the label &lt;em&gt;could&lt;/em&gt; take up, without necessarily taking it all up.&lt;/p&gt;
+
+&lt;p&gt;The auto layout API only provides one way to calculate distances: Layout, then measure.
+So to find out how wide the label can become, we tell it to become &lt;em&gt;really&lt;/em&gt; wide (with careful selection of priority), lay it out, measure it, then use the result as the preferred max layout width.
+The label&amp;#8217;s intrinsic size will do the rest.&lt;/p&gt;
+
+&lt;!-- http://www.gfycat.com/TornQuarrelsomeEnglishsetter --&gt;
+&lt;video width=&quot;318&quot; height=&quot;148&quot; autoplay=&quot;&quot; loop=&quot;&quot; muted=&quot;muted&quot; poster=&quot;/assets/2014-07-07-auto-layout-and-views-that-wrap/shrink-wrap-correct-poster.png&quot;&gt;
+	&lt;source src=&quot;/assets/2014-07-07-auto-layout-and-views-that-wrap/shrink-wrap-correct.webm&quot; type=&quot;video/webm&quot; /&gt;
+	&lt;source src=&quot;/assets/2014-07-07-auto-layout-and-views-that-wrap/shrink-wrap-correct.mp4&quot; type=&quot;video/mp4&quot; /&gt;
+	&lt;img width=&quot;318&quot; height=&quot;148&quot; src=&quot;/assets/2014-07-07-auto-layout-and-views-that-wrap/shrink-wrap-correct.gif&quot; /&gt;
+&lt;/video&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;objc&quot;&gt;&lt;span class=&quot;k&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;layoutSubviews&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;NSLayoutConstraint&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;labelAsWideAsPossibleConstraint&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;
+         &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSLayoutConstraint&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;constraintWithItem&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;label&lt;/span&gt;
+                                      &lt;span class=&quot;nl&quot;&gt;attribute:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSLayoutAttributeWidth&lt;/span&gt;
+                                      &lt;span class=&quot;nl&quot;&gt;relatedBy:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSLayoutRelationEqual&lt;/span&gt;
+                                         &lt;span class=&quot;nl&quot;&gt;toItem:&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;nil&lt;/span&gt;
+                                      &lt;span class=&quot;nl&quot;&gt;attribute:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;
+                                     &lt;span class=&quot;nl&quot;&gt;multiplier:&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;1.0&lt;/span&gt;
+                                       &lt;span class=&quot;nl&quot;&gt;constant:&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;1e8&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// a big number&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;labelAsWideAsPossibleConstraint&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;priority&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;label&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;contentCompressionResistancePriorityForAxis&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UILayoutConstraintAxisHorizontal&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;label&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;addConstraint&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;labelAsWideAsPossibleConstraint&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+
+    &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;super&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;layoutSubviews&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+
+    &lt;span class=&quot;n&quot;&gt;CGFloat&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;availableLabelWidth&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;label&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;frame&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;size&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;width&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;label&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;preferredMaxLayoutWidth&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;availableLabelWidth&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;label&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;removeConstraint&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;labelAsWideAsPossibleConstraint&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+
+    &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;super&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;layoutSubviews&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;All these examples are available in the &lt;a href=&quot;https://github.com/jmah/WrapDemo&quot;&gt;WrapDemo&lt;/a&gt; project on GitHub.&lt;/p&gt;
+</description>
+				<pubDate>Mon, 07 Jul 2014 11:55:02 -0700</pubDate>
+				<link>http://devetc.org/code/2014/07/07/auto-layout-and-views-that-wrap.html</link>
+				<guid isPermaLink="true">http://devetc.org/code/2014/07/07/auto-layout-and-views-that-wrap.html</guid>
+			</item>
+		
+			<item>
 				<title>Tail Recursion, Objective-C, and ARC</title>
 				<description>&lt;p&gt;Tail recursion is a way to perform recursion without using a stack frame.
 Put another way, tail recursion is writing iterative loops using recursive syntax.&lt;/p&gt;
@@ -566,7 +729,7 @@ But it&amp;#8217;s still an absolute reference, so the code isn&amp;#8217;t a ni
 
 &lt;p&gt;It&amp;#8217;d be nice to have a way to reference the defining class — like the &lt;code&gt;__FILE__&lt;/code&gt; macro but for the current &lt;code&gt;@implementation&lt;/code&gt;.
 Although there&amp;#8217;s nothing built-in, it&amp;#8217;s possible to add with a macro (though less efficiently than one provided by the compiler).
-I&amp;#8217;ve done that in the &lt;a href=&quot;https://github.com/jmah/MyLilHelpers&quot;&gt;MyLilHelpers&lt;/a&gt; project, called &lt;code&gt;_definingClass&lt;/code&gt;.
+I&amp;#8217;ve done that in the &lt;a href=&quot;https://github.com/jmah/MyLilKeyPathHelpers&quot;&gt;MyLilKeyPathHelpers&lt;/a&gt; project, called &lt;code&gt;_definingClass&lt;/code&gt;.
 Using this, we can create a copy-and-paste snippet:
 &lt;code&gt;[[_definingClass superclass] instancesRespondToSelector:_cmd]&lt;/code&gt;.&lt;/p&gt;
 
@@ -655,7 +818,7 @@ Just to be clear, &lt;strong&gt;don&amp;#8217;t do this!&lt;/strong&gt; Here be 
 &lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
-&lt;p&gt;With &lt;a href=&quot;https://github.com/jmah/MyLilHelpers&quot;&gt;MyLilHelper&lt;/a&gt;&amp;#8217;s &lt;code&gt;_definingClass&lt;/code&gt; macro, checking super doesn&amp;#8217;t require specifying the class:&lt;/p&gt;
+&lt;p&gt;With the &lt;code&gt;_definingClass&lt;/code&gt; macro, checking super doesn&amp;#8217;t require specifying the class:&lt;/p&gt;
 
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;objc&quot;&gt;&lt;span class=&quot;k&quot;&gt;@implementation&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;MyViewControllerSubclass&lt;/span&gt;
 &lt;span class=&quot;k&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSInteger&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;numberOfSectionsInCollectionView:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;UICollectionView&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;collectionView&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
