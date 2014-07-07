@@ -113,8 +113,6 @@ This method is called by both `-intrinsicContentSize` to calculate the size base
 	<img width="318" height="168" src="/assets/2014-07-07-auto-layout-and-views-that-wrap/custom-wrapping-view.gif">
 </video>
 
-[WrapDemo]: https://github.com/jmah/WrapDemo
-
 
 ## Shrink-Wrapping
 
@@ -171,3 +169,7 @@ The label's intrinsic size will do the rest.
 {% endhighlight %}
 
 All these examples are available in the [WrapDemo] project on GitHub.
+
+Thanks to Kevin Cathey for his ongoing help and insights with Auto Layout.
+
+[WrapDemo]: https://github.com/jmah/WrapDemo
