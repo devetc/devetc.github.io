@@ -201,7 +201,7 @@ But it's still an absolute reference, so the code isn't a nice cut-and-paste sni
 
 It'd be nice to have a way to reference the defining class — like the `__FILE__` macro but for the current `@implementation`.
 Although there's nothing built-in, it's possible to add with a macro (though less efficiently than one provided by the compiler).
-I've done that in the [MyLilHelpers][my-lil-helpers] project, called `_definingClass`.
+I've done that in the [MyLilKeyPathHelpers][my-lil-key-path-helpers] project, called `_definingClass`.
 Using this, we can create a copy-and-paste snippet:
 `[[_definingClass superclass] instancesRespondToSelector:_cmd]`.
 
@@ -294,7 +294,7 @@ If you implement a method from a protocol conformed to by a superclass, call sup
 @end
 {% endhighlight %}
 
-With [MyLilHelper][my-lil-helpers]'s `_definingClass` macro, checking super doesn't require specifying the class:
+With the `_definingClass` macro, checking super doesn't require specifying the class:
 
 {% highlight objc %}
 @implementation MyViewControllerSubclass
@@ -310,7 +310,7 @@ With [MyLilHelper][my-lil-helpers]'s `_definingClass` macro, checking super does
 {% endhighlight %}
 
 
-[my-lil-helpers]: https://github.com/jmah/MyLilHelpers
+[my-lil-key-path-helpers]: https://github.com/jmah/MyLilKeyPathHelpers
 [hopper-app]: http://www.hopperapp.com/
 [mike-ash-blog]:https://mikeash.com/pyblog/
 
