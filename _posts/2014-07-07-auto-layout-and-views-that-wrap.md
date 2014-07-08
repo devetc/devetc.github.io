@@ -149,7 +149,7 @@ The label's intrinsic size will do the rest.
     NSLayoutConstraint *labelAsWideAsPossibleConstraint =
          [NSLayoutConstraint constraintWithItem:self.label
                                       attribute:NSLayoutAttributeWidth
-                                      relatedBy:NSLayoutRelationEqual
+                                      relatedBy:NSLayoutRelationGreaterThanOrEqual
                                          toItem:nil
                                       attribute:0
                                      multiplier:1.0
