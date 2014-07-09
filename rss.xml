@@ -143,7 +143,7 @@ The label&amp;#8217;s intrinsic size will do the rest.&lt;/p&gt;
     &lt;span class=&quot;n&quot;&gt;NSLayoutConstraint&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;labelAsWideAsPossibleConstraint&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;
          &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSLayoutConstraint&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;constraintWithItem&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;label&lt;/span&gt;
                                       &lt;span class=&quot;nl&quot;&gt;attribute:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSLayoutAttributeWidth&lt;/span&gt;
-                                      &lt;span class=&quot;nl&quot;&gt;relatedBy:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSLayoutRelationEqual&lt;/span&gt;
+                                      &lt;span class=&quot;nl&quot;&gt;relatedBy:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSLayoutRelationGreaterThanOrEqual&lt;/span&gt;
                                          &lt;span class=&quot;nl&quot;&gt;toItem:&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;nil&lt;/span&gt;
                                       &lt;span class=&quot;nl&quot;&gt;attribute:&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;
                                      &lt;span class=&quot;nl&quot;&gt;multiplier:&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;1.0&lt;/span&gt;
