@@ -65,11 +65,15 @@ h1:after { content: "</h1>"; @include tag; }
 sup h1 { &:before, &:after { content: none; } }
 pre h1 { &:before, &:after { content: none; } }
 
+h1 { text-indent: -22.0pt; }
+
 h2:before { content: "<h2>"; @include tag; }
 h2:after { content: "</h2>"; @include tag; }
 
 sup h2 { &:before, &:after { content: none; } }
 pre h2 { &:before, &:after { content: none; } }
+
+h2 { text-indent: -22.0pt; }
 
 h3:before { content: "<h3>"; @include tag; }
 h3:after { content: "</h3>"; @include tag; }
@@ -77,11 +81,15 @@ h3:after { content: "</h3>"; @include tag; }
 sup h3 { &:before, &:after { content: none; } }
 pre h3 { &:before, &:after { content: none; } }
 
+h3 { text-indent: -22.0pt; }
+
 h4:before { content: "<h4>"; @include tag; }
 h4:after { content: "</h4>"; @include tag; }
 
 sup h4 { &:before, &:after { content: none; } }
 pre h4 { &:before, &:after { content: none; } }
+
+h4 { text-indent: -22.0pt; }
 
 h5:before { content: "<h5>"; @include tag; }
 h5:after { content: "</h5>"; @include tag; }
@@ -89,11 +97,15 @@ h5:after { content: "</h5>"; @include tag; }
 sup h5 { &:before, &:after { content: none; } }
 pre h5 { &:before, &:after { content: none; } }
 
+h5 { text-indent: -22.0pt; }
+
 h6:before { content: "<h6>"; @include tag; }
 h6:after { content: "</h6>"; @include tag; }
 
 sup h6 { &:before, &:after { content: none; } }
 pre h6 { &:before, &:after { content: none; } }
+
+h6 { text-indent: -22.0pt; }
 
 
 a.reversefootnote { &:before, &:after { content: none; } }

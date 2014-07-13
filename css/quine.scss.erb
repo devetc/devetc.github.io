@@ -39,7 +39,10 @@ tag_styles.keys.sort.each do |style|
 
 sup <%= tag %> { &:before, &:after { content: none; } }
 pre <%= tag %> { &:before, &:after { content: none; } }
+<% if style == 'tag' %>
+<%= tag %> { text-indent: -<%= 5.5 * (tag.length + 2) %>pt; }
 <%	end
+	end
 end %>
 
 a.reversefootnote { &:before, &:after { content: none; } }
