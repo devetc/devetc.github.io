@@ -36,7 +36,7 @@ On Mac OS X and iOS, the counter value is returned from `mach_absolute_time()`, 
 Several functions include the conversion to seconds: `-[NSProcessInfo systemUptime]`, `CACurrentMediaTime()`, and others.
 The particular value of this counter isn't really useful because it's reset on boot, but the difference between two readings tells you how much time has elapsed, regardless of any changes to the real-time clock.
 This is useful for measuring throughput, or processing speed, of some operation — numbers like "frames per second".
-However since the CPU increments this counter, *the monotonic clock stops when the CPU is powered down* — which includes when the system is ""sleeping".
+However since the CPU increments this counter, *the monotonic clock stops when the CPU is powered down* — which includes when the system is "sleeping".
 
 3. **Boot time**, which is like monotonic time but does not pause when the system goes to sleep.
 This value is reported by the `uptime` tool.
