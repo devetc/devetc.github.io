@@ -61,45 +61,45 @@
 	<img width="318" height="236" src="/assets/2014-07-07-auto-layout-and-views-that-wrap/label-dynamic-preferred-max-layout-width.gif" />
 </video>
 
-<h2 id="why-it-doesnt-just-work">Why it doesn&#8217;t &#8220;just work&#8221;</h2>
+<h2 id="why-it-doesnt-just-work">Why it doesn’t “just work”</h2>
 
-<p>In auto layout, views have the notion of &#8220;intrinsic content size&#8221;:
+<p>In auto layout, views have the notion of “intrinsic content size”:
 A width and height (either, both, or neither) that fits the view well.
-The layout system will try to give the view at least this much space with &#8220;high&#8221; priority, configurable as the view&#8217;s &#8220;compression resistance&#8221;.</p>
+The layout system will try to give the view at least this much space with “high” priority, configurable as the view’s “compression resistance”.</p>
 
 <p>The layout system treats this width and height independently.
-For example, if a segmented control&#8217;s text is long enough that it can&#8217;t fit horizontally, its intrinsic height will still try to be satisfied.
+For example, if a segmented control’s text is long enough that it can’t fit horizontally, its intrinsic height will still try to be satisfied.
 This works great for views that have some defined size, such as buttons, images, sliders, and small labels.</p>
 
 <p>But views that wrap have more complex behavior: their width and height interact.
 They can trade width for height, and vice-versa.</p>
 
-<p>This can&#8217;t be expressed purely with constraints.
+<p>This can’t be expressed purely with constraints.
 <strong>Proof:</strong>
 Consider a simplified model, ignoring word breaking and that complicated text stuff.
-We&#8217;d like a view to have constant area, i.e. <em>width</em> × <em>height</em> = <em>constant</em>.
+We’d like a view to have constant area, i.e. <em>width</em> × <em>height</em> = <em>constant</em>.
 Constraints must be of the form <em>attribute1</em> = <em>multiplier</em> × <em>attribute2</em> + <em>constant</em> (so the system can provide certain performance guarantees).
 There is no way to represent the first equation with the second; hence there is no way to represent wrapping purely with constraints.</p>
 
-<p>We can&#8217;t leave both width and height as free variables to be solved by the constraint engine.
-The simplest approach — and the one that Apple uses — is to fix the width, and leave the height variable (dependent on the label&#8217;s content).</p>
+<p>We can’t leave both width and height as free variables to be solved by the constraint engine.
+The simplest approach — and the one that Apple uses — is to fix the width, and leave the height variable (dependent on the label’s content).</p>
 
 <h2 id="preferred-max-layout-width">Preferred Max Layout Width</h2>
 
 <p>Both <code>UILabel</code> and <code>NSTextField</code> have the <code>preferredMaxLayoutWidth</code> property.
-If this is non-zero, it&#8217;s used as the maximum width of the label&#8217;s intrinsic content size.
+If this is non-zero, it’s used as the maximum width of the label’s intrinsic content size.
 When the label has more text than can fit in that width, the label will return a larger value for its intrinsic height.
-(If the label has only a little text, the label&#8217;s intrinsic width can be less than its preferred max layout width.)</p>
+(If the label has only a little text, the label’s intrinsic width can be less than its preferred max layout width.)</p>
 
-<p>On iOS, <code>UILabel</code>&#8217;s preferred max layout width is set to the width of the label as it appears in the nib (even if it becomes a different size at runtime).</p>
+<p>On iOS, <code>UILabel</code>’s preferred max layout width is set to the width of the label as it appears in the nib (even if it becomes a different size at runtime).</p>
 
 <p>On OS X, <code>NSTextField</code> can optionally have its preferred max layout width set to the first size it takes on <em>after</em> layout.</p>
 
-<p>If the space available to the label can change, as in the demo at the top, or if the container can be resized (or rotated), you&#8217;ll need to change the preferred max layout width dynamically.</p>
+<p>If the space available to the label can change, as in the demo at the top, or if the container can be resized (or rotated), you’ll need to change the preferred max layout width dynamically.</p>
 
 <h2 id="adjusting-the-preferred-max-layout-width">Adjusting the Preferred Max Layout Width</h2>
 
-<p>To dynamically set <code>preferredMaxLayoutWidth</code>, you&#8217;ll need to override <code>-[UIView layoutSubviews]</code> or <code>-[NSView layout]</code> of the label&#8217;s superview.
+<p>To dynamically set <code>preferredMaxLayoutWidth</code>, you’ll need to override <code>-[UIView layoutSubviews]</code> or <code>-[NSView layout]</code> of the label’s superview.
 To get the behavior at the top, set the preferred max layout width to the width available to the label.</p>
 
 <p>The example label has these constraints:</p>
@@ -108,27 +108,26 @@ To get the behavior at the top, set the preferred max layout width to the width 
 
 <p>The fixed left and right constraints make it take up all available horizontal space.</p>
 
-<p><em>Please don&#8217;t</em> hard-code numerical constants in your code.
-They&#8217;ll make your layout overly fragile.
+<p><em>Please don’t</em> hard-code numerical constants in your code.
+They’ll make your layout overly fragile.
 Instead, you can use the layout system to your advantage and do two passes.</p>
 
-<p>The second animation at the top uses the following code in the label&#8217;s superview:</p>
+<p>The second animation at the top uses the following code in the label’s superview:</p>
 
-<div class="highlight"><pre><code class="objc"><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">layoutSubviews</span> <span class="p">{</span>
-    <span class="p">[</span><span class="n">super</span> <span class="n">layoutSubviews</span><span class="p">];</span>
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="p">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">layoutSubviews</span> <span class="p">{</span>
+    <span class="p">[</span><span class="nb">super</span> <span class="n">layoutSubviews</span><span class="p">];</span>
 
-    <span class="n">CGFloat</span> <span class="n">availableLabelWidth</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">label</span><span class="p">.</span><span class="n">frame</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">width</span><span class="p">;</span>
-    <span class="n">self</span><span class="p">.</span><span class="n">label</span><span class="p">.</span><span class="n">preferredMaxLayoutWidth</span> <span class="o">=</span> <span class="n">availableLabelWidth</span><span class="p">;</span>
+    <span class="n">CGFloat</span> <span class="n">availableLabelWidth</span> <span class="o">=</span> <span class="nb">self</span><span class="p">.</span><span class="n">label</span><span class="p">.</span><span class="n">frame</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">width</span><span class="p">;</span>
+    <span class="nb">self</span><span class="p">.</span><span class="n">label</span><span class="p">.</span><span class="n">preferredMaxLayoutWidth</span> <span class="o">=</span> <span class="n">availableLabelWidth</span><span class="p">;</span>
 
-    <span class="p">[</span><span class="n">super</span> <span class="n">layoutSubviews</span><span class="p">];</span>
-<span class="p">}</span>
-</code></pre></div>
+    <span class="p">[</span><span class="nb">super</span> <span class="n">layoutSubviews</span><span class="p">];</span>
+<span class="p">}</span></code></pre></div>
 
-<p>The first call to <code>[super layoutSubviews]</code> will evaluate the constraints on the label (since it&#8217;s a direct subview) and change its frame accordingly.
-At this point the width is useful, but the height is not; the height was set using the label&#8217;s intrinsic content size, which in turn relied on a preferred max layout width value that is now stale.</p>
+<p>The first call to <code>[super layoutSubviews]</code> will evaluate the constraints on the label (since it’s a direct subview) and change its frame accordingly.
+At this point the width is useful, but the height is not; the height was set using the label’s intrinsic content size, which in turn relied on a preferred max layout width value that is now stale.</p>
 
 <p>Now we know the actual width of the label, we set that as its max layout width.
-Internally, this causes the label to invalidate its intrinsic content size; when it&#8217;s next queried, it will have the accurate height for its current width.
+Internally, this causes the label to invalidate its intrinsic content size; when it’s next queried, it will have the accurate height for its current width.
 With all layout information in place, we call <code>[super layoutSubviews]</code> again.</p>
 
 <h2 id="creating-your-own-views-that-wrap">Creating your own views that wrap</h2>
@@ -146,8 +145,8 @@ This method is called by both <code>-intrinsicContentSize</code> to calculate th
 
 <h2 id="shrink-wrapping">Shrink-Wrapping</h2>
 
-<p>Finally, there are times where we&#8217;d like to combine wrapping with &#8220;shrink to fit&#8221; behavior (aka &#8220;content hugging&#8221;).
-Instead of fixing the label&#8217;s leading and trailing space, we can instead add constraints to make it centered and <em>at least</em> some distance from the edge.</p>
+<p>Finally, there are times where we’d like to combine wrapping with “shrink to fit” behavior (aka “content hugging”).
+Instead of fixing the label’s leading and trailing space, we can instead add constraints to make it centered and <em>at least</em> some distance from the edge.</p>
 
 <p><img width="356" height="110" alt="Label shrink-wrap constraints" src="/assets/2014-07-07-auto-layout-and-views-that-wrap/shrink-label-constraints.png" /></p>
 
@@ -160,12 +159,12 @@ Instead of fixing the label&#8217;s leading and trailing space, we can instead a
 	<img width="318" height="146" src="/assets/2014-07-07-auto-layout-and-views-that-wrap/shrink-wrap-buggy.gif" />
 </video>
 
-<p>The space to the edge is satisfied if it&#8217;s greater-than-or-equal-to the constant — it only ever pushes the label in, it never pulls it out.
+<p>The space to the edge is satisfied if it’s greater-than-or-equal-to the constant — it only ever pushes the label in, it never pulls it out.
 What we want to do is find the width that the label <em>could</em> take up, without necessarily taking it all up.</p>
 
 <p>The auto layout API only provides one way to calculate distances: Layout, then measure.
 So to find out how wide the label can become, we tell it to become <em>really</em> wide (with careful selection of priority), lay it out, measure it, then use the result as the preferred max layout width.
-The label&#8217;s intrinsic size will do the rest.</p>
+The label’s intrinsic size will do the rest.</p>
 
 <!-- http://www.gfycat.com/TornQuarrelsomeEnglishsetter -->
 <video width="318" height="148" autoplay="" loop="" muted="muted" poster="/assets/2014-07-07-auto-layout-and-views-that-wrap/shrink-wrap-correct-poster.png">
@@ -174,28 +173,27 @@ The label&#8217;s intrinsic size will do the rest.</p>
 	<img width="318" height="148" src="/assets/2014-07-07-auto-layout-and-views-that-wrap/shrink-wrap-correct.gif" />
 </video>
 
-<div class="highlight"><pre><code class="objc"><span class="k">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">layoutSubviews</span> <span class="p">{</span>
-    <span class="n">NSLayoutConstraint</span> <span class="o">*</span><span class="n">labelAsWideAsPossibleConstraint</span> <span class="o">=</span>
-         <span class="p">[</span><span class="n">NSLayoutConstraint</span> <span class="n">constraintWithItem</span><span class="o">:</span><span class="n">self</span><span class="p">.</span><span class="n">label</span>
-                                      <span class="nl">attribute:</span><span class="n">NSLayoutAttributeWidth</span>
-                                      <span class="nl">relatedBy:</span><span class="n">NSLayoutRelationGreaterThanOrEqual</span>
-                                         <span class="nl">toItem:</span><span class="nb">nil</span>
-                                      <span class="nl">attribute:</span><span class="mi">0</span>
-                                     <span class="nl">multiplier:</span><span class="mf">1.0</span>
-                                       <span class="nl">constant:</span><span class="mf">1e8</span><span class="p">];</span> <span class="c1">// a big number</span>
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="p">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">layoutSubviews</span> <span class="p">{</span>
+    <span class="bp">NSLayoutConstraint</span> <span class="o">*</span><span class="n">labelAsWideAsPossibleConstraint</span> <span class="o">=</span>
+         <span class="p">[</span><span class="bp">NSLayoutConstraint</span> <span class="nl">constraintWithItem</span><span class="p">:</span><span class="nb">self</span><span class="p">.</span><span class="n">label</span>
+                                      <span class="nl">attribute</span><span class="p">:</span><span class="n">NSLayoutAttributeWidth</span>
+                                      <span class="nl">relatedBy</span><span class="p">:</span><span class="n">NSLayoutRelationGreaterThanOrEqual</span>
+                                         <span class="nl">toItem</span><span class="p">:</span><span class="nb">nil</span>
+                                      <span class="nl">attribute</span><span class="p">:</span><span class="mi">0</span>
+                                     <span class="nl">multiplier</span><span class="p">:</span><span class="mf">1.0</span>
+                                       <span class="nl">constant</span><span class="p">:</span><span class="mf">1e8</span><span class="p">];</span> <span class="c1">// a big number</span>
     <span class="n">labelAsWideAsPossibleConstraint</span><span class="p">.</span><span class="n">priority</span> <span class="o">=</span>
-        <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">label</span> <span class="n">contentCompressionResistancePriorityForAxis</span><span class="o">:</span><span class="n">UILayoutConstraintAxisHorizontal</span><span class="p">];</span>
-    <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">label</span> <span class="n">addConstraint</span><span class="o">:</span><span class="n">labelAsWideAsPossibleConstraint</span><span class="p">];</span>
+        <span class="p">[</span><span class="nb">self</span><span class="p">.</span><span class="n">label</span> <span class="nl">contentCompressionResistancePriorityForAxis</span><span class="p">:</span><span class="n">UILayoutConstraintAxisHorizontal</span><span class="p">];</span>
+    <span class="p">[</span><span class="nb">self</span><span class="p">.</span><span class="n">label</span> <span class="nl">addConstraint</span><span class="p">:</span><span class="n">labelAsWideAsPossibleConstraint</span><span class="p">];</span>
 
-    <span class="p">[</span><span class="n">super</span> <span class="n">layoutSubviews</span><span class="p">];</span>
+    <span class="p">[</span><span class="nb">super</span> <span class="n">layoutSubviews</span><span class="p">];</span>
 
-    <span class="n">CGFloat</span> <span class="n">availableLabelWidth</span> <span class="o">=</span> <span class="n">self</span><span class="p">.</span><span class="n">label</span><span class="p">.</span><span class="n">frame</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">width</span><span class="p">;</span>
-    <span class="n">self</span><span class="p">.</span><span class="n">label</span><span class="p">.</span><span class="n">preferredMaxLayoutWidth</span> <span class="o">=</span> <span class="n">availableLabelWidth</span><span class="p">;</span>
-    <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">label</span> <span class="n">removeConstraint</span><span class="o">:</span><span class="n">labelAsWideAsPossibleConstraint</span><span class="p">];</span>
+    <span class="n">CGFloat</span> <span class="n">availableLabelWidth</span> <span class="o">=</span> <span class="nb">self</span><span class="p">.</span><span class="n">label</span><span class="p">.</span><span class="n">frame</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">width</span><span class="p">;</span>
+    <span class="nb">self</span><span class="p">.</span><span class="n">label</span><span class="p">.</span><span class="n">preferredMaxLayoutWidth</span> <span class="o">=</span> <span class="n">availableLabelWidth</span><span class="p">;</span>
+    <span class="p">[</span><span class="nb">self</span><span class="p">.</span><span class="n">label</span> <span class="nl">removeConstraint</span><span class="p">:</span><span class="n">labelAsWideAsPossibleConstraint</span><span class="p">];</span>
 
-    <span class="p">[</span><span class="n">super</span> <span class="n">layoutSubviews</span><span class="p">];</span>
-<span class="p">}</span>
-</code></pre></div>
+    <span class="p">[</span><span class="nb">super</span> <span class="n">layoutSubviews</span><span class="p">];</span>
+<span class="p">}</span></code></pre></div>
 
 <p>All these examples are available in the <a href="https://github.com/jmah/WrapDemo">WrapDemo</a> project on GitHub.</p>
 

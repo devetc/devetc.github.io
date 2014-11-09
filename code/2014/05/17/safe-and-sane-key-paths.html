@@ -51,23 +51,22 @@ On iOS you have to provide some of the glue yourself, but you typically let <a h
 
 <h2 id="the-problem">The problem</h2>
 
-<p>These &#8220;key–value&#8221; techniques have one main thing in common:
+<p>These “key–value” techniques have one main thing in common:
 They use strings to reference code.
 This makes it fragile. For example:</p>
 
-<div class="highlight"><pre><code class="objc"><span class="k">@implementation</span> <span class="nc">ContrivedExample</span>
-<span class="k">-</span> <span class="p">(</span><span class="n">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nf">title</span>
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="k">@implementation</span> <span class="nc">ContrivedExample</span>
+<span class="p">-</span> <span class="p">(</span><span class="bp">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nf">title</span>
 <span class="p">{</span> <span class="k">return</span> <span class="s">@&quot;foo&quot;</span><span class="p">;</span> <span class="p">}</span>
 
-<span class="k">-</span> <span class="p">(</span><span class="n">NSUInteger</span><span class="p">)</span><span class="nf">contrivedLength</span>
-<span class="p">{</span> <span class="k">return</span> <span class="p">[[</span><span class="n">self</span> <span class="n">title</span><span class="p">]</span> <span class="n">length</span><span class="p">];</span> <span class="p">}</span>
+<span class="p">-</span> <span class="p">(</span><span class="bp">NSUInteger</span><span class="p">)</span><span class="nf">contrivedLength</span>
+<span class="p">{</span> <span class="k">return</span> <span class="p">[[</span><span class="nb">self</span> <span class="n">title</span><span class="p">]</span> <span class="n">length</span><span class="p">];</span> <span class="p">}</span>
 
-<span class="k">-</span> <span class="p">(</span><span class="n">NSUInteger</span><span class="p">)</span><span class="nf">contrivedLengthKVC</span>
-<span class="p">{</span> <span class="k">return</span> <span class="p">[[</span><span class="n">self</span> <span class="n">valueForKey</span><span class="o">:</span><span class="s">@&quot;title&quot;</span><span class="p">]</span> <span class="n">length</span><span class="p">];</span> <span class="p">}</span>
-<span class="k">@end</span>
-</code></pre></div>
+<span class="p">-</span> <span class="p">(</span><span class="bp">NSUInteger</span><span class="p">)</span><span class="nf">contrivedLengthKVC</span>
+<span class="p">{</span> <span class="k">return</span> <span class="p">[[</span><span class="nb">self</span> <span class="nl">valueForKey</span><span class="p">:</span><span class="s">@&quot;title&quot;</span><span class="p">]</span> <span class="n">length</span><span class="p">];</span> <span class="p">}</span>
+<span class="k">@end</span></code></pre></div>
 
-<p>If we rename the method <code>title</code>, the compiler will immediately show that <code>contrivedLength</code> won&#8217;t work without changes.
+<p>If we rename the method <code>title</code>, the compiler will immediately show that <code>contrivedLength</code> won’t work without changes.
 But <code>contrivedLengthKVC</code> will have no such warning, because <code>@"title"</code> remains a perfectly valid string.
 We would only see an error at run-time, if and when that code was triggered.
 Of course in real code, string references like this appear much further apart than in the above snippet, making stale references and even typos a real problem.</p>
@@ -81,13 +80,13 @@ Of course in real code, string references like this appear much further apart th
 Many have taken this route, resulting in a large variety<sup id="fnref:safe-kvc-links"><a href="#fn:safe-kvc-links" class="footnote">3</a></sup> with different trade-offs. A couple that are representative:</p>
 
 <ol>
-  <li>With <a href="https://github.com/jspahrsummers/libextobjc/blob/master/extobjc/EXTKeyPathCoding.h">libextobjc</a> you have to specify the target of the key path twice — <code>[self valueForKey:@keypath(self.title)]</code> above — though this is often redundant, and obscures that the resulting string will be simply &#8220;title&#8221;.</li>
+  <li>With <a href="https://github.com/jspahrsummers/libextobjc/blob/master/extobjc/EXTKeyPathCoding.h">libextobjc</a> you have to specify the target of the key path twice — <code>[self valueForKey:@keypath(self.title)]</code> above — though this is often redundant, and obscures that the resulting string will be simply “title”.</li>
   <li><a href="https://github.com/delicious-monster/DMSafeKVC">DMSafeKVC</a> is more concise at use — <code>[self valueForKey:K(title)]</code> — but require annotating declarations, and only checks that <em>some</em> class has an annotated “title” accessor.</li>
 </ol>
 
-<p>Compiler error messages are typically obscured due to macro expansion. And if you&#8217;re writing library code<sup id="fnref:library-code"><a href="#fn:library-code" class="footnote">4</a></sup>, often the best approach is to use the lowest common denominator — static strings.</p>
+<p>Compiler error messages are typically obscured due to macro expansion. And if you’re writing library code<sup id="fnref:library-code"><a href="#fn:library-code" class="footnote">4</a></sup>, often the best approach is to use the lowest common denominator — static strings.</p>
 
-<p>A few months back, my colleagues at Fitbit discussed the ups and downs of various macro implementations and didn&#8217;t arrive at consensus.
+<p>A few months back, my colleagues at Fitbit discussed the ups and downs of various macro implementations and didn’t arrive at consensus.
 Additionally, retrofitting our codebase would be a mostly manual task and likely generate many conflicts (our repository has around 10 active committers).</p>
 
 <p>I began to consider a different approach.</p>
@@ -102,7 +101,7 @@ In our phrasing of the problem, a second solution becomes apparent: make the com
 <p>In the past, touching the compiler has been considered off-the-table for various reasons. With clang, this is now more practical<sup id="fnref:practicality"><a href="#fn:practicality" class="footnote">5</a></sup>, but the previous stigma still lingers.</p>
 
 <p>This code is currently proof-of-concept quality.
-(I&#8217;m only a C++ novice, and barely familiar with the clang codebase.)
+(I’m only a C++ novice, and barely familiar with the clang codebase.)
 It currently:</p>
 
 <ul>
@@ -111,35 +110,35 @@ It currently:</p>
   <li>Checks for a method named <code>key</code> or <code>isKey</code>, or a collection property that might be backed with <a href="https://developer.apple.com/library/ios/documentation/cocoa/conceptual/KeyValueCoding/Articles/AccessorConventions.html#//apple_ref/doc/uid/20002174-178830-BAJEDEFB">KVC collection accessor methods</a>.</li>
   <li>Does no checking if the type is <code>id</code>, <code>NSDictionary</code>, a class annotated with <code>objc_kvc_container</code>, or a few more.</li>
   <li>Knows that scalar numbers will be returned as <code>NSNumber</code>.</li>
-  <li>Uses the diagnostic output of the secondary clang, but the binary output of Xcode&#8217;s bundled clang.</li>
+  <li>Uses the diagnostic output of the secondary clang, but the binary output of Xcode’s bundled clang.</li>
 </ul>
 
-<p>The compiler plug-in doesn&#8217;t do everything that some of the macro approaches do, but has the giant advantage of requiring zero code changes and no dependencies.
-It also doesn&#8217;t exclude the use of macros, either.
+<p>The compiler plug-in doesn’t do everything that some of the macro approaches do, but has the giant advantage of requiring zero code changes and no dependencies.
+It also doesn’t exclude the use of macros, either.
 Only one small project setting change is required:</p>
 
 <p><img alt="Key path warnings in Xcode" src="/assets/2014-05-17-safe-and-sane-key-paths/build-setting.png" width="642" /></p>
 
-<p>If you&#8217;d like to try this with your own project, look at the <a href="https://github.com/jmah/Clang-KeyPathValidator">Clang-KeyPathValidator</a> README file.
+<p>If you’d like to try this with your own project, look at the <a href="https://github.com/jmah/Clang-KeyPathValidator">Clang-KeyPathValidator</a> README file.
 Then check out the <a href="https://github.com/jmah/Clang-KeyPathValidator/issues">GitHub Issues</a> page and see if you can help out with something.
 Or just help get the word out!</p>
 
 <div class="footnotes">
   <ol>
     <li id="fn:java-boilerplate">
-      <p>This opinion is several years old, before Java reflection was commonly available or efficient.<a href="#fnref:java-boilerplate" class="reversefootnote">&#8617;</a></p>
+      <p>This opinion is several years old, before Java reflection was commonly available or efficient. <a href="#fnref:java-boilerplate" class="reversefootnote">&#8617;</a></p>
     </li>
     <li id="fn:stringly-typed">
-      <p>The term &#8220;stringly-typed&#8221; is just great.<a href="#fnref:stringly-typed" class="reversefootnote">&#8617;</a></p>
+      <p>The term “stringly-typed” is just great. <a href="#fnref:stringly-typed" class="reversefootnote">&#8617;</a></p>
     </li>
     <li id="fn:safe-kvc-links">
-      <p><a href="http://orangejuiceliberationfront.com/safe-key-value-coding/">Uli Kusterer&#8217;s approach using <code>@selector</code></a>;<br /><a href="https://gist.github.com/n-b/2394297">Nicolas Bouilleaud&#8217;s approach using <code>@selector</code></a>;<br /><a href="https://gist.github.com/kyleve/8213806">Kyle Van Essen&#8217;s approach using declared targets</a>;<br /><a href="https://gist.github.com/darknoon/4482025">Andrew Pouliot&#8217;s approach using declared targets</a>;<br /><a href="https://github.com/iMartinKiss/Valid-KeyPath">Martin Kiss&#8217;s approach using declared targets</a>;<br />and many more.<a href="#fnref:safe-kvc-links" class="reversefootnote">&#8617;</a></p>
+      <p><a href="http://orangejuiceliberationfront.com/safe-key-value-coding/">Uli Kusterer’s approach using <code>@selector</code></a>;<br /><a href="https://gist.github.com/n-b/2394297">Nicolas Bouilleaud’s approach using <code>@selector</code></a>;<br /><a href="https://gist.github.com/kyleve/8213806">Kyle Van Essen’s approach using declared targets</a>;<br /><a href="https://gist.github.com/darknoon/4482025">Andrew Pouliot’s approach using declared targets</a>;<br /><a href="https://github.com/iMartinKiss/Valid-KeyPath">Martin Kiss’s approach using declared targets</a>;<br />and many more. <a href="#fnref:safe-kvc-links" class="reversefootnote">&#8617;</a></p>
     </li>
     <li id="fn:library-code">
-      <p>&#8220;Library code&#8221; refers to code shared between projects which might use different safe KVC techniques, or none at all.<a href="#fnref:library-code" class="reversefootnote">&#8617;</a></p>
+      <p>“Library code” refers to code shared between projects which might use different safe KVC techniques, or none at all. <a href="#fnref:library-code" class="reversefootnote">&#8617;</a></p>
     </li>
     <li id="fn:practicality">
-      <p>It&#8217;s unfortunately still not completely painless, because the particular versions shipped by Apple with Xcode are not made publicly available, and have plug-in support disabled.<a href="#fnref:practicality" class="reversefootnote">&#8617;</a></p>
+      <p>It’s unfortunately still not completely painless, because the particular versions shipped by Apple with Xcode are not made publicly available, and have plug-in support disabled. <a href="#fnref:practicality" class="reversefootnote">&#8617;</a></p>
     </li>
   </ol>
 </div>

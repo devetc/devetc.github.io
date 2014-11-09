@@ -48,13 +48,13 @@ Apple themselves changed their recommendation with iOS 5.
 However their advice right now is bad — or at least poorly reasoned.
 The rest of the Cocoa guidelines and my own experience both lead me to the opposite conclusion: <strong>declare outlets as strong</strong>.</p>
 
-<p>To clarify, I&#8217;m talking about outlets from controllers to views — outlets on &#8220;File&#8217;s Owner&#8221;, often a <code>UIViewController</code>, <code>NSViewController</code>, or <code>NSWindowController</code> instance.
-(And yes, &#8220;owner&#8221; does imply &#8220;strong&#8221;.)
+<p>To clarify, I’m talking about outlets from controllers to views — outlets on “File’s Owner”, often a <code>UIViewController</code>, <code>NSViewController</code>, or <code>NSWindowController</code> instance.
+(And yes, “owner” does imply “strong”.)
 Outlets from views to controllers or other views — for example a table view subclass adding an <code>awesomeSource</code> — should be weak.</p>
 
 <p>Tedious analysis follows.</p>
 
-<h2 id="apples-reasons">Apple&#8217;s reasons</h2>
+<h2 id="apples-reasons">Apple’s reasons</h2>
 
 <p>Apple documents their recommendations in the <a href="https://developer.apple.com/library/mac/documentation/cocoa/conceptual/loadingresources/CocoaNibs/CocoaNibs.html">Resource Programming Guide: Nib Files</a>:</p>
 
@@ -83,12 +83,12 @@ Outlets that you create should therefore typically be <code>weak</code>, because
   </ul>
 </blockquote>
 
-<p>To summarize, the documentation says, &#8220;use weak when you can, but it doesn&#8217;t always work&#8221;.
-If you do use weak references in the above cases, it will sometimes work (both <code>UIViewController</code> and <code>NSViewController</code> actually <em>do</em> retain the top-level objects of a nib, but it&#8217;s undocumented), and sometimes fail (removing a view from its superview, if that was the last strong reference).
+<p>To summarize, the documentation says, “use weak when you can, but it doesn’t always work”.
+If you do use weak references in the above cases, it will sometimes work (both <code>UIViewController</code> and <code>NSViewController</code> actually <em>do</em> retain the top-level objects of a nib, but it’s undocumented), and sometimes fail (removing a view from its superview, if that was the last strong reference).
 Oh, and remember to change them from <code>weak</code> to <code>strong</code> if the layout of the nib changes, or if you start doing something different with the connected objects.
 And remember to change them from <code>strong</code> back to <code>weak</code> because… well, <strong>why exactly</strong>?</p>
 
-<p>Each of the above reasons sounds like, &#8220;some objects already have a retaining reference, so they <strong>shouldn&#8217;t have</strong> another&#8221;, which is an argument against reference counting in favor of <code>malloc</code>/<code>free</code> semantics.</p>
+<p>Each of the above reasons sounds like, “some objects already have a retaining reference, so they <strong>shouldn’t have</strong> another”, which is an argument against reference counting in favor of <code>malloc</code>/<code>free</code> semantics.</p>
 
 <p>Consider a simple case:</p>
 
@@ -98,14 +98,14 @@ And remember to change them from <code>strong</code> back to <code>weak</code> b
 @end
 </code></pre>
 
-<p>The <code>options</code> property indirectly holds a strong reference to all the options, so by the nib doc&#8217;s first reason <code>selectedOption</code> should be declared <code>weak</code>.
-That could work, but it&#8217;s overly fragile:</p>
+<p>The <code>options</code> property indirectly holds a strong reference to all the options, so by the nib doc’s first reason <code>selectedOption</code> should be declared <code>weak</code>.
+That could work, but it’s overly fragile:</p>
 
 <ol>
   <li>If <code>selectedOption</code> is set before <code>options</code>, the value may or may not be nil.
-Even worse, the outcome could depend on the compiler&#8217;s optimization setting:
+Even worse, the outcome could depend on the compiler’s optimization setting:
 Everything could look fine in Debug, but fail in Release!</li>
-  <li>There are values that compare equal but aren&#8217;t identical, such that <code>[choice.options containsObject:opt]</code> is true, but when stored in <code>selectedOption</code> would silently be lost.</li>
+  <li>There are values that compare equal but aren’t identical, such that <code>[choice.options containsObject:opt]</code> is true, but when stored in <code>selectedOption</code> would silently be lost.</li>
 </ol>
 
 <p>The sane storage specifier for <code>selectedOption</code> is at least <code>strong</code> (<code>copy</code> is even more appropriate).</p>
@@ -113,28 +113,28 @@ Everything could look fine in Debug, but fail in Release!</li>
 <p>The docs also convey the feeling that <code>weak</code> is an optimization. With my memory-management goggles on, this is how I read the above:</p>
 
 <ul>
-  <li>Outlets that are connected to subviews are already retained by the top-level <code>view</code> (or <code>window</code>) outlet, so they <strong>shouldn&#8217;t bother</strong> with that retain/release stuff.</li>
-  <li>The outlets that do need to do these &#8220;heavy-weight&#8221; retain/release calls are typically provided by the system.</li>
+  <li>Outlets that are connected to subviews are already retained by the top-level <code>view</code> (or <code>window</code>) outlet, so they <strong>shouldn’t bother</strong> with that retain/release stuff.</li>
+  <li>The outlets that do need to do these “heavy-weight” retain/release calls are typically provided by the system.</li>
 </ul>
 
 <p>This is misleading, because accessing a <code>weak</code> property is many times slower than a <code>strong</code> one!
-All that&#8217;s needed to access a <code>strong, nonatomic</code> property is just to read and return the pointer value.<sup id="fnref:objc-accessors"><a href="#fn:objc-accessors" class="footnote">1</a></sup>
-Accessing a <code>weak, nonatomic</code> property requires first testing that the object hasn&#8217;t been marked as deallocated, then retaining and autoreleasing the value (otherwise the returned pointer may turn invalid at any time); and each part of this access requires locking.<sup id="fnref:objc-loadWeak"><a href="#fn:objc-loadWeak" class="footnote">2</a></sup></p>
+All that’s needed to access a <code>strong, nonatomic</code> property is just to read and return the pointer value.<sup id="fnref:objc-accessors"><a href="#fn:objc-accessors" class="footnote">1</a></sup>
+Accessing a <code>weak, nonatomic</code> property requires first testing that the object hasn’t been marked as deallocated, then retaining and autoreleasing the value (otherwise the returned pointer may turn invalid at any time); and each part of this access requires locking.<sup id="fnref:objc-loadWeak"><a href="#fn:objc-loadWeak" class="footnote">2</a></sup></p>
 
-<p>The only reason in support of <code>weak</code> outlets is that they don&#8217;t require explicit clean-up when releasing the top-level view.
+<p>The only reason in support of <code>weak</code> outlets is that they don’t require explicit clean-up when releasing the top-level view.
 But unloading the top-level view turned out to be difficult to get correct, difficult to test, and <strong>very difficult</strong> to keep correct as the code changes.
 So Apple very practically decided to stop doing it as of iOS 6.<sup id="fnref:wwdc-viewDidUnload"><a href="#fn:wwdc-viewDidUnload" class="footnote">3</a></sup></p>
 
 <h2 id="curiouser">Curiouser</h2>
 
 <p>At some point in 2011<sup id="fnref:adc-nibs-revision-history"><a href="#fn:adc-nibs-revision-history" class="footnote">4</a></sup>, the guidelines for iOS was changed from <code>strong</code> to <code>weak</code>.
-I&#8217;d really like to know the history of this, because the reasons stated now were just as valid then.
-Perhaps there&#8217;s some unstated reason?</p>
+I’d really like to know the history of this, because the reasons stated now were just as valid then.
+Perhaps there’s some unstated reason?</p>
 
 <blockquote>
   <p>Prior to ARC, the rules for managing nib objects are different from those described above. How you manage the objects depends on the platform and on the memory model in use. Whichever platform you develop for, you should define outlets using the Objective-C declared properties feature.</p>
 
-  <p>[&#8230;]</p>
+  <p>[…]</p>
 
   <ul>
     <li>For iOS, you should use:</li>
@@ -156,16 +156,16 @@ Shoot a Twitter-gram to the germinal <a href="https://twitter.com/dev_etc">@dev_
 <div class="footnotes">
   <ol>
     <li id="fn:objc-accessors">
-      <p>See the <a href="http://www.opensource.apple.com/source/objc4/objc4-551.1/runtime/Accessors.subproj/objc-accessors.mm">objc-accessors.mm source file</a><a href="#fnref:objc-accessors" class="reversefootnote">&#8617;</a></p>
+      <p>See the <a href="http://www.opensource.apple.com/source/objc4/objc4-551.1/runtime/Accessors.subproj/objc-accessors.mm">objc-accessors.mm source file</a> <a href="#fnref:objc-accessors" class="reversefootnote">&#8617;</a></p>
     </li>
     <li id="fn:objc-loadWeak">
-      <p>See <code>objc_loadWeak</code> in clang&#8217;s <a href="http://clang.llvm.org/docs/AutomaticReferenceCounting.html#arc-runtime-objc-loadweak">Automatic Reference Counting documentation</a>.<a href="#fnref:objc-loadWeak" class="reversefootnote">&#8617;</a></p>
+      <p>See <code>objc_loadWeak</code> in clang’s <a href="http://clang.llvm.org/docs/AutomaticReferenceCounting.html#arc-runtime-objc-loadweak">Automatic Reference Counting documentation</a>. <a href="#fnref:objc-loadWeak" class="reversefootnote">&#8617;</a></p>
     </li>
     <li id="fn:wwdc-viewDidUnload">
-      <p>See <a href="https://developer.apple.com/videos/wwdc/2012/">WWDC 2012</a> Session 200: &#8220;What&#8217;s New in Cocoa Touch&#8221;, 00:18:00 in.<a href="#fnref:wwdc-viewDidUnload" class="reversefootnote">&#8617;</a></p>
+      <p>See <a href="https://developer.apple.com/videos/wwdc/2012/">WWDC 2012</a> Session 200: “What’s New in Cocoa Touch”, 00:18:00 in. <a href="#fnref:wwdc-viewDidUnload" class="reversefootnote">&#8617;</a></p>
     </li>
     <li id="fn:adc-nibs-revision-history">
-      <p>Actually 2011-10-12, thanks to the <a href="https://developer.apple.com/library/mac/documentation/cocoa/conceptual/loadingresources/RevisionHistory.html#//apple_ref/doc/uid/20001604-CJBGIAGF">revision history</a><a href="#fnref:adc-nibs-revision-history" class="reversefootnote">&#8617;</a></p>
+      <p>Actually 2011-10-12, thanks to the <a href="https://developer.apple.com/library/mac/documentation/cocoa/conceptual/loadingresources/RevisionHistory.html#//apple_ref/doc/uid/20001604-CJBGIAGF">revision history</a> <a href="#fnref:adc-nibs-revision-history" class="reversefootnote">&#8617;</a></p>
     </li>
   </ol>
 </div>

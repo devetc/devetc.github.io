@@ -48,56 +48,52 @@ Put another way, tail recursion is writing iterative loops using recursive synta
 
 <p>For a contrived but simple example, consider a linked list definition, with a method to calculate the length:</p>
 
-<div class="highlight"><pre><code class="objc"><span class="k">@interface</span> <span class="nc">ListNode</span> : <span class="nc">NSObject</span>
-<span class="k">@property</span> <span class="p">(</span><span class="n">nonatomic</span><span class="p">,</span> <span class="n">copy</span><span class="p">)</span> <span class="n">NSString</span> <span class="o">*</span><span class="n">name</span><span class="p">;</span>
-<span class="k">@property</span> <span class="p">(</span><span class="n">nonatomic</span><span class="p">,</span> <span class="n">strong</span><span class="p">)</span> <span class="n">ListNode</span> <span class="o">*</span><span class="n">next</span><span class="p">;</span>
-<span class="k">-</span> <span class="p">(</span><span class="n">NSUInteger</span><span class="p">)</span><span class="nf">length</span><span class="p">;</span>
-<span class="k">@end</span>
-</code></pre></div>
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="k">@interface</span> <span class="nc">ListNode</span> : <span class="bp">NSObject</span>
+<span class="k">@property</span> <span class="p">(</span><span class="k">nonatomic</span><span class="p">,</span> <span class="k">copy</span><span class="p">)</span> <span class="bp">NSString</span> <span class="o">*</span><span class="n">name</span><span class="p">;</span>
+<span class="k">@property</span> <span class="p">(</span><span class="k">nonatomic</span><span class="p">,</span> <span class="k">strong</span><span class="p">)</span> <span class="n">ListNode</span> <span class="o">*</span><span class="n">next</span><span class="p">;</span>
+<span class="p">-</span> <span class="p">(</span><span class="bp">NSUInteger</span><span class="p">)</span><span class="nf">length</span><span class="p">;</span>
+<span class="k">@end</span></code></pre></div>
 
 <p>A simple, recursive implementation of <code>-length</code> could be:</p>
 
-<div class="highlight"><pre><code class="objc"><span class="c1">// v1</span>
-<span class="k">-</span> <span class="p">(</span><span class="n">NSUInteger</span><span class="p">)</span><span class="nf">length</span> <span class="p">{</span>
-    <span class="k">return</span> <span class="mi">1</span> <span class="o">+</span> <span class="p">[</span><span class="n">self</span><span class="p">.</span><span class="n">next</span> <span class="n">length</span><span class="p">];</span>
-<span class="p">}</span>
-</code></pre></div>
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="c1">// v1</span>
+<span class="p">-</span> <span class="p">(</span><span class="bp">NSUInteger</span><span class="p">)</span><span class="nf">length</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="mi">1</span> <span class="o">+</span> <span class="p">[</span><span class="nb">self</span><span class="p">.</span><span class="n">next</span> <span class="n">length</span><span class="p">];</span>
+<span class="p">}</span></code></pre></div>
 
 <p>This exploits the fact that calls to <code>nil</code> will return zero<sup id="fnref:send-to-nil"><a href="#fn:send-to-nil" class="footnote">1</a></sup>, which happens to work in this specific case because the base case is zero.
 But we’ll need to play with the base case shortly, so let’s make it explicit:</p>
 
-<div class="highlight"><pre><code class="objc"><span class="c1">// v2</span>
-<span class="k">-</span> <span class="p">(</span><span class="n">NSUInteger</span><span class="p">)</span><span class="nf">length</span> <span class="p">{</span>
-    <span class="k">return</span> <span class="p">[[</span><span class="n">self</span> <span class="n">class</span><span class="p">]</span> <span class="n">lengthOfListWithHead</span><span class="o">:</span><span class="n">self</span><span class="p">];</span>
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="c1">// v2</span>
+<span class="p">-</span> <span class="p">(</span><span class="bp">NSUInteger</span><span class="p">)</span><span class="nf">length</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="p">[[</span><span class="nb">self</span> <span class="k">class</span><span class="p">]</span> <span class="nl">lengthOfListWithHead</span><span class="p">:</span><span class="nb">self</span><span class="p">];</span>
 <span class="p">}</span>
 
-<span class="k">+</span> <span class="p">(</span><span class="n">NSUInteger</span><span class="p">)</span><span class="nf">lengthOfListWithHead:</span><span class="p">(</span><span class="n">ListNode</span> <span class="o">*</span><span class="p">)</span><span class="nv">node</span> <span class="p">{</span>
+<span class="p">+</span> <span class="p">(</span><span class="bp">NSUInteger</span><span class="p">)</span><span class="nf">lengthOfListWithHead:</span><span class="p">(</span><span class="n">ListNode</span> <span class="o">*</span><span class="p">)</span><span class="nv">node</span> <span class="p">{</span>
     <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">node</span><span class="p">)</span>
         <span class="k">return</span> <span class="mi">0</span><span class="p">;</span> <span class="c1">// base case</span>
     <span class="k">else</span>
-        <span class="k">return</span> <span class="mi">1</span> <span class="o">+</span> <span class="p">[</span><span class="n">self</span> <span class="n">lengthOfListWithHead</span><span class="o">:</span><span class="n">node</span><span class="p">.</span><span class="n">next</span><span class="p">];</span>
-<span class="p">}</span>
-</code></pre></div>
+        <span class="k">return</span> <span class="mi">1</span> <span class="o">+</span> <span class="p">[</span><span class="nb">self</span> <span class="nl">lengthOfListWithHead</span><span class="p">:</span><span class="n">node</span><span class="p">.</span><span class="n">next</span><span class="p">];</span>
+<span class="p">}</span></code></pre></div>
 
 <p>This code is <strong>not</strong> tail-recursive, and running it will create a stack frame for each list node.
 This is undesirable because the list may have an arbitrary number of nodes<sup id="fnref:node-limit"><a href="#fn:node-limit" class="footnote">2</a></sup>, but the stack we’re using to count them has a relatively small fixed size, so with a sufficiently long list the stack <em>will</em> overflow and the program will crash.</p>
 
 <p>Let’s convert this to an iterative implementation:</p>
 
-<div class="highlight"><pre><code class="objc"><span class="c1">// v3</span>
-<span class="k">-</span> <span class="p">(</span><span class="n">NSUInteger</span><span class="p">)</span><span class="nf">length</span> <span class="p">{</span>
-    <span class="k">return</span> <span class="p">[[</span><span class="n">self</span> <span class="n">class</span><span class="p">]</span> <span class="n">lengthOfListWithHead</span><span class="o">:</span><span class="n">self</span><span class="p">];</span>
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="c1">// v3</span>
+<span class="p">-</span> <span class="p">(</span><span class="bp">NSUInteger</span><span class="p">)</span><span class="nf">length</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="p">[[</span><span class="nb">self</span> <span class="k">class</span><span class="p">]</span> <span class="nl">lengthOfListWithHead</span><span class="p">:</span><span class="nb">self</span><span class="p">];</span>
 <span class="p">}</span>
 
-<span class="k">+</span> <span class="p">(</span><span class="n">NSUInteger</span><span class="p">)</span><span class="nf">lengthOfListWithHead:</span><span class="p">(</span><span class="n">ListNode</span> <span class="o">*</span><span class="p">)</span><span class="nv">node</span> <span class="p">{</span>
-    <span class="n">NSUInteger</span> <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="c1">// base case</span>
+<span class="p">+</span> <span class="p">(</span><span class="bp">NSUInteger</span><span class="p">)</span><span class="nf">lengthOfListWithHead:</span><span class="p">(</span><span class="n">ListNode</span> <span class="o">*</span><span class="p">)</span><span class="nv">node</span> <span class="p">{</span>
+    <span class="bp">NSUInteger</span> <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="c1">// base case</span>
     <span class="k">while</span> <span class="p">(</span><span class="n">node</span><span class="p">)</span> <span class="p">{</span>
         <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span><span class="p">;</span>
         <span class="n">node</span> <span class="o">=</span> <span class="n">node</span><span class="p">.</span><span class="n">next</span><span class="p">;</span>
     <span class="p">}</span>
     <span class="k">return</span> <span class="n">count</span><span class="p">;</span>
-<span class="p">}</span>
-</code></pre></div>
+<span class="p">}</span></code></pre></div>
 
 <p>Now calculating the length will use a constant number of stack frames<sup id="fnref:frame-count"><a href="#fn:frame-count" class="footnote">3</a></sup>, avoiding the problem above.
 Some may argue that the elegance of the recursive approach has been lost, though.</p>
@@ -105,25 +101,24 @@ Some may argue that the elegance of the recursive approach has been lost, though
 <p>Note that in each iteration, the code changes <code>node</code> — a parameter — as well a new local variable.
 We can play with this, making a parameter for <code>count</code> as well:</p>
 
-<div class="highlight"><pre><code class="objc"><span class="c1">// v4</span>
-<span class="k">-</span> <span class="p">(</span><span class="n">NSUInteger</span><span class="p">)</span><span class="nf">length</span> <span class="p">{</span>
-    <span class="k">return</span> <span class="p">[[</span><span class="n">self</span> <span class="n">class</span><span class="p">]</span> <span class="n">lengthOfListWithHead</span><span class="o">:</span><span class="n">self</span> <span class="n">count</span><span class="o">:</span><span class="mi">0</span> <span class="cm">/* base case */</span><span class="p">];</span>
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="c1">// v4</span>
+<span class="p">-</span> <span class="p">(</span><span class="bp">NSUInteger</span><span class="p">)</span><span class="nf">length</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="p">[[</span><span class="nb">self</span> <span class="k">class</span><span class="p">]</span> <span class="nl">lengthOfListWithHead</span><span class="p">:</span><span class="nb">self</span> <span class="nl">count</span><span class="p">:</span><span class="mi">0</span> <span class="cm">/* base case */</span><span class="p">];</span>
 <span class="p">}</span>
 
-<span class="k">+</span> <span class="p">(</span><span class="n">NSUInteger</span><span class="p">)</span><span class="nf">lengthOfListWithHead:</span><span class="p">(</span><span class="n">ListNode</span> <span class="o">*</span><span class="p">)</span><span class="nv">node</span> <span class="nf">count:</span><span class="p">(</span><span class="n">NSUInteger</span><span class="p">)</span><span class="nv">count</span> <span class="p">{</span>
+<span class="p">+</span> <span class="p">(</span><span class="bp">NSUInteger</span><span class="p">)</span><span class="nf">lengthOfListWithHead:</span><span class="p">(</span><span class="n">ListNode</span> <span class="o">*</span><span class="p">)</span><span class="nv">node</span> <span class="nf">count:</span><span class="p">(</span><span class="bp">NSUInteger</span><span class="p">)</span><span class="nv">count</span> <span class="p">{</span>
     <span class="k">while</span> <span class="p">(</span><span class="n">node</span><span class="p">)</span> <span class="p">{</span>
         <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span><span class="p">;</span>
         <span class="n">node</span> <span class="o">=</span> <span class="n">node</span><span class="p">.</span><span class="n">next</span><span class="p">;</span>
     <span class="p">}</span>
     <span class="k">return</span> <span class="n">count</span><span class="p">;</span>
-<span class="p">}</span>
-</code></pre></div>
+<span class="p">}</span></code></pre></div>
 
 <p>Now unwrap the <code>while</code> loop:</p>
 
-<div class="highlight"><pre><code class="objc"><span class="c1">// v5</span>
-<span class="k">+</span> <span class="p">(</span><span class="n">NSUInteger</span><span class="p">)</span><span class="nf">lengthOfListWithHead:</span><span class="p">(</span><span class="n">ListNode</span> <span class="o">*</span><span class="p">)</span><span class="nv">node</span> <span class="nf">count:</span><span class="p">(</span><span class="n">NSUInteger</span><span class="p">)</span><span class="nv">count</span> <span class="p">{</span>
-<span class="nl">top:</span>
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="c1">// v5</span>
+<span class="p">+</span> <span class="p">(</span><span class="bp">NSUInteger</span><span class="p">)</span><span class="nf">lengthOfListWithHead:</span><span class="p">(</span><span class="n">ListNode</span> <span class="o">*</span><span class="p">)</span><span class="nv">node</span> <span class="nf">count:</span><span class="p">(</span><span class="bp">NSUInteger</span><span class="p">)</span><span class="nv">count</span> <span class="p">{</span>
+<span class="nl">top</span><span class="p">:</span>
     <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">node</span><span class="p">)</span> <span class="p">{</span>
         <span class="k">return</span> <span class="n">count</span><span class="p">;</span>
     <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
@@ -131,23 +126,21 @@ We can play with this, making a parameter for <code>count</code> as well:</p>
         <span class="n">node</span> <span class="o">=</span> <span class="n">node</span><span class="p">.</span><span class="n">next</span><span class="p">;</span>
         <span class="k">goto</span> <span class="n">top</span><span class="p">;</span>
     <span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div>
+<span class="p">}</span></code></pre></div>
 
 <p>Pay attention to the code in <code>else</code> clause. This technique — setting parameters and jumping to the top of a method — is also known as <strong>calling a method</strong>:</p>
 
-<div class="highlight"><pre><code class="objc"><span class="c1">// v6</span>
-<span class="k">+</span> <span class="p">(</span><span class="n">NSUInteger</span><span class="p">)</span><span class="nf">lengthOfListWithHead:</span><span class="p">(</span><span class="n">ListNode</span> <span class="o">*</span><span class="p">)</span><span class="nv">node</span> <span class="nf">count:</span><span class="p">(</span><span class="n">NSUInteger</span><span class="p">)</span><span class="nv">count</span> <span class="p">{</span>
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="c1">// v6</span>
+<span class="p">+</span> <span class="p">(</span><span class="bp">NSUInteger</span><span class="p">)</span><span class="nf">lengthOfListWithHead:</span><span class="p">(</span><span class="n">ListNode</span> <span class="o">*</span><span class="p">)</span><span class="nv">node</span> <span class="nf">count:</span><span class="p">(</span><span class="bp">NSUInteger</span><span class="p">)</span><span class="nv">count</span> <span class="p">{</span>
     <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">node</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">count</span><span class="p">;</span>
     <span class="k">else</span>
-        <span class="k">return</span> <span class="p">[</span><span class="n">self</span> <span class="n">lengthOfListWithHead</span><span class="o">:</span><span class="n">node</span><span class="p">.</span><span class="n">next</span> <span class="n">count</span><span class="o">:</span><span class="p">(</span><span class="n">count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)];</span>
-<span class="p">}</span>
-</code></pre></div>
+        <span class="k">return</span> <span class="p">[</span><span class="nb">self</span> <span class="nl">lengthOfListWithHead</span><span class="p">:</span><span class="n">node</span><span class="p">.</span><span class="n">next</span> <span class="nl">count</span><span class="p">:(</span><span class="n">count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)];</span>
+<span class="p">}</span></code></pre></div>
 
 <p>This is tail recursion.
 The initial recursive implementation (v2) is <strong>not</strong> tail-recursive because each pass performs an addition after the recursive call returns.
-The state of this incomplete addition must be stored somewhere, and that &#8220;somewhere&#8221; is the stack.</p>
+The state of this incomplete addition must be stored somewhere, and that “somewhere” is the stack.</p>
 
 <p>Let this soak in for a moment.</p>
 
@@ -164,7 +157,7 @@ I was surprised to see that v6 did <strong>not</strong> get its tail-call optimi
 This <em>should</em> work; there is no work to be done after the recursive call, so why isn’t being optimized?
 Dump the assembly! (Source annotations added by hand.)</p>
 
-<div class="highlight"><pre><code class="nasm"><span class="nf">Tail</span><span class="err">`</span><span class="o">+</span><span class="p">[</span><span class="nv">ListNode</span> <span class="nv">lengthOfListWithHead_v6</span><span class="p">:</span><span class="nv">count</span><span class="p">:]</span> <span class="nv">at</span> <span class="nv">main.m</span><span class="p">:</span><span class="mi">103</span><span class="p">:</span>
+<div class="highlight"><pre><code class="language-nasm" data-lang="nasm"><span class="nf">Tail</span><span class="err">`</span><span class="o">+</span><span class="p">[</span><span class="nv">ListNode</span> <span class="nv">lengthOfListWithHead_v6</span><span class="p">:</span><span class="nv">count</span><span class="p">:]</span> <span class="nv">at</span> <span class="nv">main.m</span><span class="p">:</span><span class="mi">103</span><span class="p">:</span>
 <span class="err">0</span><span class="nl">x100001ae0:</span>  <span class="nf">pushq</span>  <span class="o">%</span><span class="nb">rbp</span>
 <span class="err">0</span><span class="nl">x100001ae1:</span>  <span class="nf">movq</span>   <span class="o">%</span><span class="nb">rsp</span><span class="p">,</span> <span class="o">%</span><span class="nb">rbp</span>
 <span class="err">0</span><span class="nl">x100001ae4:</span>  <span class="nf">pushq</span>  <span class="o">%</span><span class="nv">r15</span>
@@ -201,8 +194,7 @@ Dump the assembly! (Source annotations added by hand.)</p>
 <span class="err">0</span><span class="nl">x100001b3d:</span>  <span class="nf">popq</span>   <span class="o">%</span><span class="nv">r14</span>
 <span class="err">0</span><span class="nl">x100001b3f:</span>  <span class="nf">popq</span>   <span class="o">%</span><span class="nv">r15</span>
 <span class="err">0</span><span class="nl">x100001b41:</span>  <span class="nf">popq</span>   <span class="o">%</span><span class="nb">rbp</span>
-<span class="err">0</span><span class="nl">x100001b42:</span>  <span class="nf">ret</span>    
-</code></pre></div>
+<span class="err">0</span><span class="nl">x100001b42:</span>  <span class="nf">ret</span></code></pre></div>
 
 <p>The problem is revealed: there <strong>is</strong> work to be done after the recursive call: automatic reference counting inserted a release call for the value returned from <code>node.next</code>.
 If we were writing this with manual retain/release, one wouldn’t insert any memory management calls into this at all, because <code>-next</code> returns an autoreleased object.
@@ -211,21 +203,20 @@ Unfortunately in this case, it conflicts with tail call optimization.</p>
 
 <p>One way to avoid this is to use the instance variable directly:</p>
 
-<div class="highlight"><pre><code class="objc"><span class="c1">// v7</span>
-<span class="k">-</span> <span class="p">(</span><span class="n">NSUInteger</span><span class="p">)</span><span class="nf">length</span> <span class="p">{</span>
-    <span class="k">return</span> <span class="p">[[</span><span class="n">self</span> <span class="n">class</span><span class="p">]</span> <span class="n">lengthOfListWithHead</span><span class="o">:</span><span class="n">self</span> <span class="n">count</span><span class="o">:</span><span class="mi">0</span><span class="p">];</span>
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="c1">// v7</span>
+<span class="p">-</span> <span class="p">(</span><span class="bp">NSUInteger</span><span class="p">)</span><span class="nf">length</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="p">[[</span><span class="nb">self</span> <span class="k">class</span><span class="p">]</span> <span class="nl">lengthOfListWithHead</span><span class="p">:</span><span class="nb">self</span> <span class="nl">count</span><span class="p">:</span><span class="mi">0</span><span class="p">];</span>
 <span class="p">}</span>
-<span class="k">+</span> <span class="p">(</span><span class="n">NSUInteger</span><span class="p">)</span><span class="nf">lengthOfListWithHead:</span><span class="p">(</span><span class="n">ListNode</span> <span class="o">*</span><span class="p">)</span><span class="nv">node</span> <span class="nf">count:</span><span class="p">(</span><span class="n">NSUInteger</span><span class="p">)</span><span class="nv">count</span> <span class="p">{</span>
+<span class="p">+</span> <span class="p">(</span><span class="bp">NSUInteger</span><span class="p">)</span><span class="nf">lengthOfListWithHead:</span><span class="p">(</span><span class="n">ListNode</span> <span class="o">*</span><span class="p">)</span><span class="nv">node</span> <span class="nf">count:</span><span class="p">(</span><span class="bp">NSUInteger</span><span class="p">)</span><span class="nv">count</span> <span class="p">{</span>
     <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">node</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">count</span><span class="p">;</span>
     <span class="k">else</span>
-        <span class="k">return</span> <span class="p">[</span><span class="n">self</span> <span class="n">lengthOfListWithHead</span><span class="o">:</span><span class="n">node</span><span class="o">-&gt;</span><span class="n">_next</span> <span class="n">count</span><span class="o">:</span><span class="p">(</span><span class="n">count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)];</span>
-<span class="p">}</span>
-</code></pre></div>
+        <span class="k">return</span> <span class="p">[</span><span class="nb">self</span> <span class="nl">lengthOfListWithHead</span><span class="p">:</span><span class="n">node</span><span class="o">-&gt;</span><span class="n">_next</span> <span class="nl">count</span><span class="p">:(</span><span class="n">count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)];</span>
+<span class="p">}</span></code></pre></div>
 
 <p>This generates much more compact assembly:</p>
 
-<div class="highlight"><pre><code class="nasm"><span class="nf">Tail</span><span class="err">`</span><span class="o">+</span><span class="p">[</span><span class="nv">ListNode</span> <span class="nv">lengthOfListWithHead_v7</span><span class="p">:</span><span class="nv">count</span><span class="p">:]</span> <span class="nv">at</span> <span class="nv">main.m</span><span class="p">:</span><span class="mi">115</span><span class="p">:</span>
+<div class="highlight"><pre><code class="language-nasm" data-lang="nasm"><span class="nf">Tail</span><span class="err">`</span><span class="o">+</span><span class="p">[</span><span class="nv">ListNode</span> <span class="nv">lengthOfListWithHead_v7</span><span class="p">:</span><span class="nv">count</span><span class="p">:]</span> <span class="nv">at</span> <span class="nv">main.m</span><span class="p">:</span><span class="mi">115</span><span class="p">:</span>
 <span class="err">0</span><span class="nl">x100001a50:</span>  <span class="nf">pushq</span>  <span class="o">%</span><span class="nb">rbp</span>
 <span class="err">0</span><span class="nl">x100001a51:</span>  <span class="nf">movq</span>   <span class="o">%</span><span class="nb">rsp</span><span class="p">,</span> <span class="o">%</span><span class="nb">rbp</span>
 <span class="err">0</span><span class="nl">x100001a54:</span>  <span class="nf">testq</span>  <span class="o">%</span><span class="nb">rdx</span><span class="p">,</span> <span class="o">%</span><span class="nb">rdx</span>
@@ -239,8 +230,7 @@ Unfortunately in this case, it conflicts with tail call optimization.</p>
 <span class="err">0</span><span class="nl">x100001a6f:</span>  <span class="nf">jmpq</span>   <span class="o">*</span><span class="mh">0x5a3</span><span class="p">(</span><span class="o">%</span><span class="nv">rip</span><span class="p">)</span>              <span class="c1">; (void *)0x00007fff99e68080: objc_msgSend</span>
 <span class="err">0</span><span class="nl">x100001a75:</span>  <span class="nf">movq</span>   <span class="o">%</span><span class="nb">rcx</span><span class="p">,</span> <span class="o">%</span><span class="nb">rax</span>
 <span class="err">0</span><span class="nl">x100001a78:</span>  <span class="nf">popq</span>   <span class="o">%</span><span class="nb">rbp</span>
-<span class="err">0</span><span class="nl">x100001a79:</span>  <span class="nf">ret</span>    
-</code></pre></div>
+<span class="err">0</span><span class="nl">x100001a79:</span>  <span class="nf">ret</span></code></pre></div>
 
 <p>However the behavior is slightly different: <code>node</code> could be an instance of a <code>ListNode</code> subclass that has overridden <code>next</code> to return something different. The compiler, being conservative, won’t replace the message send with an instance variable access for this reason.</p>
 
@@ -255,16 +245,15 @@ Assume <code>next</code> isn’t overridden, access the ivar directly, and get t
 Try to handle both situations:
 
 
-<div class="highlight"><pre><code class="objc"><span class="c1">// v8</span>
-<span class="k">+</span> <span class="p">(</span><span class="n">NSUInteger</span><span class="p">)</span><span class="nf">lengthOfListWithHead:</span><span class="p">(</span><span class="n">ListNode</span> <span class="o">*</span><span class="p">)</span><span class="nv">node</span> <span class="nf">count:</span><span class="p">(</span><span class="n">NSUInteger</span><span class="p">)</span><span class="nv">count</span> <span class="p">{</span>
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="c1">// v8</span>
+<span class="p">+</span> <span class="p">(</span><span class="bp">NSUInteger</span><span class="p">)</span><span class="nf">lengthOfListWithHead:</span><span class="p">(</span><span class="n">ListNode</span> <span class="o">*</span><span class="p">)</span><span class="nv">node</span> <span class="nf">count:</span><span class="p">(</span><span class="bp">NSUInteger</span><span class="p">)</span><span class="nv">count</span> <span class="p">{</span>
     <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">node</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">count</span><span class="p">;</span>
-    <span class="k">else</span> <span class="k">if</span> <span class="p">([</span><span class="n">node</span> <span class="n">isMemberOfClass</span><span class="o">:</span><span class="n">self</span><span class="p">])</span>
-        <span class="k">return</span> <span class="p">[</span><span class="n">self</span> <span class="n">lengthOfListWithHead</span><span class="o">:</span><span class="n">node</span><span class="o">-&gt;</span><span class="n">_next</span> <span class="n">count</span><span class="o">:</span><span class="p">(</span><span class="n">count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)];</span>
+    <span class="k">else</span> <span class="k">if</span> <span class="p">([</span><span class="n">node</span> <span class="nl">isMemberOfClass</span><span class="p">:</span><span class="nb">self</span><span class="p">])</span>
+        <span class="k">return</span> <span class="p">[</span><span class="nb">self</span> <span class="nl">lengthOfListWithHead</span><span class="p">:</span><span class="n">node</span><span class="o">-&gt;</span><span class="n">_next</span> <span class="nl">count</span><span class="p">:(</span><span class="n">count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)];</span>
     <span class="k">else</span>
-        <span class="k">return</span> <span class="p">[</span><span class="n">self</span> <span class="n">lengthOfListWithHead</span><span class="o">:</span><span class="n">node</span><span class="p">.</span><span class="n">next</span> <span class="n">count</span><span class="o">:</span><span class="p">(</span><span class="n">count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)];</span>
-<span class="p">}</span>
-</code></pre></div>
+        <span class="k">return</span> <span class="p">[</span><span class="nb">self</span> <span class="nl">lengthOfListWithHead</span><span class="p">:</span><span class="n">node</span><span class="p">.</span><span class="n">next</span> <span class="nl">count</span><span class="p">:(</span><span class="n">count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)];</span>
+<span class="p">}</span></code></pre></div>
 
   
 <p>
@@ -290,13 +279,13 @@ Admit defeat, and just use explicit iteration.
 <div class="footnotes">
   <ol>
     <li id="fn:send-to-nil">
-      <p>See <a href="https://developer.apple.com/library/ios/documentation/Cocoa/Conceptual/ProgrammingWithObjectiveC/WorkingwithObjects/WorkingwithObjects.html#//apple_ref/doc/uid/TP40011210-CH4-SW22">Programming with Objective-C: Working with nil</a><a href="#fnref:send-to-nil" class="reversefootnote">&#8617;</a></p>
+      <p>See <a href="https://developer.apple.com/library/ios/documentation/Cocoa/Conceptual/ProgrammingWithObjectiveC/WorkingwithObjects/WorkingwithObjects.html#//apple_ref/doc/uid/TP40011210-CH4-SW22">Programming with Objective-C: Working with nil</a> <a href="#fnref:send-to-nil" class="reversefootnote">&#8617;</a></p>
     </li>
     <li id="fn:node-limit">
-      <p>As written here, where every node is an object in memory, of course there is a limit to those too. Both 32-bit and 64-bit address spaces allow <em>much</em> longer lists than the stack could could accommodate, though.<a href="#fnref:node-limit" class="reversefootnote">&#8617;</a></p>
+      <p>As written here, where every node is an object in memory, of course there is a limit to those too. Both 32-bit and 64-bit address spaces allow <em>much</em> longer lists than the stack could could accommodate, though. <a href="#fnref:node-limit" class="reversefootnote">&#8617;</a></p>
     </li>
     <li id="fn:frame-count">
-      <p>Naively this will use 2 frames, one for <code>-[ListNode length]</code> and one for <code>+[ListNode lengthOfListWithHead:]</code>. If the tail call in <code>-[ListNode length]</code> can be turned into a jump, there may only be one frame; but it likely can’t be. See <a href="http://www.complang.tuwien.ac.at/schani/diplarb.ps">Proper Tail Recursion in C</a>.<a href="#fnref:frame-count" class="reversefootnote">&#8617;</a></p>
+      <p>Naively this will use 2 frames, one for <code>-[ListNode length]</code> and one for <code>+[ListNode lengthOfListWithHead:]</code>. If the tail call in <code>-[ListNode length]</code> can be turned into a jump, there may only be one frame; but it likely can’t be. See <a href="http://www.complang.tuwien.ac.at/schani/diplarb.ps">Proper Tail Recursion in C</a>. <a href="#fnref:frame-count" class="reversefootnote">&#8617;</a></p>
     </li>
   </ol>
 </div>
