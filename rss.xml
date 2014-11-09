@@ -7,6 +7,141 @@
 		<atom:link href="http://devetc.orgfeed.xml" rel="self" type="application/rss+xml" />
 		
 			<item>
+				<title>Mutable Return Values</title>
+				<description>&lt;p&gt;Over the past year I’ve had the opportunity to interview a couple dozen candidates for iOS positions (heavy in Objective-C) at Fitbit.
+Early on in the process we discuss some commonly used concepts, plus do some light coding.
+In particular we often ask the candidate to implement a method of the form:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-objc&quot; data-lang=&quot;objc&quot;&gt;&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSArray&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;manipulateSomeArray:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSArray&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;input&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;The manipulation is straightforward&lt;sup id=&quot;fnref:non-disclose&quot;&gt;&lt;a href=&quot;#fn:non-disclose&quot; class=&quot;footnote&quot;&gt;1&lt;/a&gt;&lt;/sup&gt; — create an &lt;code&gt;NSMutableArray&lt;/code&gt;, add some combination of the objects in then input array, then return the result.
+As candidates talk through it, many have misconceptions about returning the intermediate &lt;code&gt;NSMutableArray&lt;/code&gt;, versus returning a ‘plain’ &lt;code&gt;NSArray&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;Commonly, I’ll hear that you can’t or shouldn’t return a mutable array because the compiler will be confused / angry / upset.
+That’s a load of crap.
+More recently we use &lt;a href=&quot;https://coderpad.io/&quot;&gt;CoderPad&lt;/a&gt; with candidates, which provides the ability to actually run the compiler.
+Upon seeing that returning the &lt;code&gt;NSMutableArray *&lt;/code&gt; is totally fine, I’ve heard “Hmm, it works now, but I know I’ve seen the compiler get this wrong before”.
+(This may make the interviewer confused / angry / upset.)&lt;/p&gt;
+
+&lt;p&gt;I’ll spit it out: Returning an &lt;code&gt;NSMutableArray *&lt;/code&gt; value is permitted from a method that returns &lt;code&gt;NSArray *&lt;/code&gt;, just as it would be from a method that returns &lt;code&gt;NSObject *&lt;/code&gt;.
+&lt;code&gt;NSMutableArray&lt;/code&gt; is a subclass of &lt;code&gt;NSArray&lt;/code&gt;, which means a &lt;em&gt;mutable array is an  array&lt;/em&gt; (they have an &lt;a href=&quot;http://en.wikipedia.org/wiki/Is-a&quot;&gt;is-a&lt;/a&gt; relationship).
+In plain C, you can return a &lt;code&gt;char *&lt;/code&gt; value from a method typed as &lt;code&gt;void *&lt;/code&gt; for similar reasons. There are &lt;strong&gt;no language issues&lt;/strong&gt; with returning a mutable array.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-objc&quot; data-lang=&quot;objc&quot;&gt;&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSArray&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;arrayWithEveryOtherObjectInArray:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSArray&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;input&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;bp&quot;&gt;NSMutableArray&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;accumulator&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSMutableArray&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;new&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSUInteger&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;input&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;count&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;accumulator&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;addObject&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;input&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]];&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;accumulator&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Another reason I’ve heard against returning the mutable instance is that it’s bad form, because the caller could then cast it back to an &lt;code&gt;NSMutableArray&lt;/code&gt; and mutate it.
+That’s strictly true, but has nothing do to with the method being called.
+The caller could similarly just &lt;code&gt;free&lt;/code&gt; the object pointer, and bad things would also happen.
+There are rules that code must follow if it wants reasonable behavior! &lt;/p&gt;
+
+&lt;p&gt;There are times where returning a mutable value is inappropriate, but this consideration is at the API design level — on syntax and semantic analysis levels it’s fine.
+Surprising behavior will arise when you return a mutable object &lt;em&gt;that is later mutated&lt;/em&gt;.
+Often this will manifest as a method returning a mutable instance variable, because instance variables are longer-lived than the above example’s local variable.&lt;/p&gt;
+
+&lt;p&gt;For example, I’d expect the following assertion to hold:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-objc&quot; data-lang=&quot;objc&quot;&gt;&lt;span class=&quot;n&quot;&gt;NSView&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;view&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSView&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;new&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;bp&quot;&gt;NSArray&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;oldSubviews&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;view&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;subviews&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;view&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;addSubview&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSButton&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;new&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]];&lt;/span&gt;
+&lt;span class=&quot;bp&quot;&gt;NSArray&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;newSubviews&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;view&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;subviews&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;asset&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;([&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;newSubviews&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;oldSubviews&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;count&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]);&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;If memory serves, this assertion would actually fail a few OS releases back.
+The problem is not that the &lt;code&gt;-subviews&lt;/code&gt; method returned a mutable array, the problem is that &lt;em&gt;it was mutated&lt;/em&gt; after being returned.
+For the &lt;code&gt;-subviews&lt;/code&gt; getter to act in an unsurprising way, one approach is to copy the mutable array that it returns (making it immutable).
+There are times where for performance it’s desirable to avoid the copy; in this case, subviews are enumerated every time something needs to draw, which should happen a lot more frequently than adding or removing subviews.&lt;/p&gt;
+
+&lt;p&gt;To improve performance, the code could return the internal mutable array, while making a note that it has been returned externally.
+Then when &lt;code&gt;-addSubview:&lt;/code&gt; goes to modify the internal &lt;code&gt;subviews&lt;/code&gt; mutable array, it first checks the flag and sees that it needs to make a new instance so it doesn’t modify what has been given out.&lt;sup id=&quot;fnref:retain-count-opt&quot;&gt;&lt;a href=&quot;#fn:retain-count-opt&quot; class=&quot;footnote&quot;&gt;2&lt;/a&gt;&lt;/sup&gt;&lt;/p&gt;
+
+&lt;p&gt;A similar issue exists with arguments. Consider this class (styled for brevity&lt;sup id=&quot;fnref:no-kvo&quot;&gt;&lt;a href=&quot;#fn:no-kvo&quot; class=&quot;footnote&quot;&gt;3&lt;/a&gt;&lt;/sup&gt;):&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-objc&quot; data-lang=&quot;objc&quot;&gt;&lt;span class=&quot;k&quot;&gt;@interface&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;NameParts&lt;/span&gt; : &lt;span class=&quot;bp&quot;&gt;NSObject&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@property&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;nonatomic&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;strong&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;NSString&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fullName&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@property&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;nonatomic&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;readonly&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;NSString&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;firstName&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;@implementation&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;NameParts&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;setFullName:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSString&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;fullName&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;_fullName&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fullName&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;_firstName&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fullName&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;componentsSeparatedByString&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;@&amp;quot; &amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;firstObject&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Which can be used like so:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-objc&quot; data-lang=&quot;objc&quot;&gt;&lt;span class=&quot;n&quot;&gt;NameParts&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;parts&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NameParts&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;new&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;parts&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fullName&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;@&amp;quot;John Smith&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;parts&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;firstName&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// =&amp;gt; @&amp;quot;John&amp;quot;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;This has a problem with mutability:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-objc&quot; data-lang=&quot;objc&quot;&gt;&lt;span class=&quot;n&quot;&gt;NameParts&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;parts&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NameParts&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;new&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;bp&quot;&gt;NSMutableString&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;mutableName&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;@&amp;quot;John Smith&amp;quot;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;mutableCopy&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;parts&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fullName&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;mutableName&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;parts&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;firstName&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// =&amp;gt; @&amp;quot;John&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;mutableName&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;setString&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;@&amp;quot;Jack White&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+
+&lt;span class=&quot;n&quot;&gt;parts&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fullName&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// =&amp;gt; @&amp;quot;Jack White&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;parts&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;firstName&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// =&amp;gt; @&amp;quot;John&amp;quot;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Previously an object was mutated after being returned; in this case the object is mutated after being passed as a parameter, also resulting in unintended behavior.
+The solution is to copy the value:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-objc&quot; data-lang=&quot;objc&quot;&gt;&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;setFullName:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSString&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;fullName&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;_fullName&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fullName&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;copy&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;When not using a custom setter, you can synthesize the same behavior by marking the property as &lt;code&gt;copy&lt;/code&gt; instead of &lt;code&gt;strong&lt;/code&gt; (and it’s good form to do so even when you do have a custom setter).
+Immutable value classes implement &lt;code&gt;-copy&lt;/code&gt; to just return self (retained), so there’s no cost worth worrying about.
+This is true even for classes that don’t have mutable counterparts like &lt;code&gt;NSURL&lt;/code&gt; and &lt;code&gt;NSNumber&lt;/code&gt;.
+You should do this in your own classes.
+For &lt;a href=&quot;http://www.cocoabuilder.com/archive/cocoa/65056-what-an-nszone.html&quot;&gt;legacy reasons&lt;/a&gt; it’s actually best to accomplish this by overriding &lt;code&gt;-copyWithZone:&lt;/code&gt;&lt;sup id=&quot;fnref:copy-with-zone&quot;&gt;&lt;a href=&quot;#fn:copy-with-zone&quot; class=&quot;footnote&quot;&gt;4&lt;/a&gt;&lt;/sup&gt;, like so:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-objc&quot; data-lang=&quot;objc&quot;&gt;&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;copyWithZone:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;NSZone&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;zone&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// immutable object&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;In fact, the behavior of Cocoa’s &lt;code&gt;-copy&lt;/code&gt; method is not obvious.
+For classes with immutable variants (such as &lt;code&gt;NSString&lt;/code&gt;, &lt;code&gt;NSArray&lt;/code&gt;), &lt;code&gt;-copy&lt;/code&gt; returns an immutable instance, and &lt;code&gt;-mutableCopy&lt;/code&gt; returns a mutable instance.
+For mutable classes &lt;em&gt;without&lt;/em&gt; immutable variants (&lt;code&gt;NSFetchRequest&lt;/code&gt;, &lt;code&gt;NSAffineTransform&lt;/code&gt;), &lt;code&gt;-copy&lt;/code&gt; returns a “mutable” copy because that’s the only kind of copy; &lt;code&gt;-mutableCopy&lt;/code&gt; is left unimplemented.
+Perhaps we can reconcile this by saying that &lt;code&gt;-copy&lt;/code&gt; returns &lt;em&gt;an instance that won’t change when some other instance is mutated.&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;Don’t fear the mutable.
+Separating mutable and immutable objects is one of Cocoa’s great strengths, while many other libraries have taken much longer to learn of its virtues — particularly relevant in a multi-threaded environment.
+Incidentally, not separating mutable and immutable is one of Core Data’s great weaknesses, but that’s a post for another time.&lt;/p&gt;
+
+&lt;p&gt;Also, know your limits.
+When you’re asked a technical question in an interview or otherwise, please either answer it correctly (great) or say you don’t know (no problem, you can look it up); don’t say you &lt;em&gt;do&lt;/em&gt; know but give a wrong answer.
+That tends to indicates you &lt;em&gt;wouldn’t&lt;/em&gt; look it up, and would blindly do the wrong thing.&lt;/p&gt;
+&lt;div class=&quot;footnotes&quot;&gt;
+  &lt;ol&gt;
+    &lt;li id=&quot;fn:non-disclose&quot;&gt;
+      &lt;p&gt;Because we plan to keep asking for the same task from new candidates, I won’t be more specific. &lt;a href=&quot;#fnref:non-disclose&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:retain-count-opt&quot;&gt;
+      &lt;p&gt;It might even be possible to optimize this further, by checking the retain count of the mutable array — if it’s 1, even if the array had been returned before, the code &lt;em&gt;might&lt;/em&gt; be able to infer that no one else has a reference to it, and modify it regardless of the “returned externally” flag. But beware, it wouldn’t be possible to rely on this behavior before ARC — calling code might elide retain/release — which means it’s probably not safe to rely on it under ARC-with-optimizations. &lt;a href=&quot;#fnref:retain-count-opt&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:no-kvo&quot;&gt;
+      &lt;p&gt;The &lt;code&gt;firstName&lt;/code&gt; property is changed without posting KVO notifications. &lt;a href=&quot;#fnref:no-kvo&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:copy-with-zone&quot;&gt;
+      &lt;p&gt;&lt;code&gt;-copy&lt;/code&gt; calls &lt;code&gt;-copyWithZone:&lt;/code&gt;. &lt;a href=&quot;#fnref:copy-with-zone&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+  &lt;/ol&gt;
+&lt;/div&gt;
+</description>
+				<pubDate>Sat, 08 Nov 2014 18:57:58 -0800</pubDate>
+				<link>http://devetc.org/code/2014/11/08/mutable-return-values.html</link>
+				<guid isPermaLink="true">http://devetc.org/code/2014/11/08/mutable-return-values.html</guid>
+			</item>
+		
+			<item>
 				<title>Auto Layout and Views that Wrap</title>
 				<description>&lt;p&gt;Out of the box, wrapped text in a &lt;code&gt;UILabel&lt;/code&gt; (or &lt;code&gt;NSTextField&lt;/code&gt; on the Mac) will behave like this when its container is resized:&lt;/p&gt;
 
@@ -1005,7 +1140,7 @@ On Mac OS X and iOS, the counter value is returned from &lt;code&gt;mach_absolut
 Several functions include the conversion to seconds: &lt;code&gt;-[NSProcessInfo systemUptime]&lt;/code&gt;, &lt;code&gt;CACurrentMediaTime()&lt;/code&gt;, and others.
 The particular value of this counter isn’t really useful because it’s reset on boot, but the difference between two readings tells you how much time has elapsed, regardless of any changes to the real-time clock.
 This is useful for measuring throughput, or processing speed, of some operation — numbers like “frames per second”.
-However since the CPU increments this counter, &lt;em&gt;the monotonic clock stops when the CPU is powered down&lt;/em&gt; — which includes when the system is ““sleeping”.&lt;/p&gt;
+However since the CPU increments this counter, &lt;em&gt;the monotonic clock stops when the CPU is powered down&lt;/em&gt; — which includes when the system is “sleeping”.&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
     &lt;p&gt;&lt;strong&gt;Boot time&lt;/strong&gt;, which is like monotonic time but does not pause when the system goes to sleep.

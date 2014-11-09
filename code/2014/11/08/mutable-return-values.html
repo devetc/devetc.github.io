@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+		<title>dev etc : Mutable Return Values</title>
+		<meta name="viewport" content="width=device-width">
+
+		<link rel="alternate" type="application/rss+xml" title="dev etc" href="/feed.xml">
+
+		<!-- syntax highlighting CSS -->
+		<link rel="stylesheet" href="/css/syntax.css">
+
+		<!-- Custom CSS -->
+		<link rel="stylesheet" href="/css/main.css">
+		<link rel="stylesheet" href="/css/quine.css">
+
+		<!-- Footnotes -->
+		<script src="/js/inline-footnotes.js"></script>
+
+		<!-- Google Analytics -->
+		<script>
+		(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+		(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+		m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+		})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+		ga('create', 'UA-44839563-1', 'devetc.org');
+		ga('send', 'pageview');
+		</script>
+
+	</head>
+	<body>
+
+		<header>
+			<h1><a href="/">dev etc</a></h1>
+			<div class="subtitle">Where mistakes go to die.</div>
+		</header>
+
+		<article>
+	<h1>Mutable Return Values</h1>
+	<div class="subtitle">Returning mutable objects is usually ok.</div>
+	<div class="post-date">Published on Saturday, 2014-11-08.</div>
+
+	<div class="post">
+	<p>Over the past year I’ve had the opportunity to interview a couple dozen candidates for iOS positions (heavy in Objective-C) at Fitbit.
+Early on in the process we discuss some commonly used concepts, plus do some light coding.
+In particular we often ask the candidate to implement a method of the form:</p>
+
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="p">-</span> <span class="p">(</span><span class="bp">NSArray</span> <span class="o">*</span><span class="p">)</span><span class="nf">manipulateSomeArray:</span><span class="p">(</span><span class="bp">NSArray</span> <span class="o">*</span><span class="p">)</span><span class="nv">input</span><span class="p">;</span></code></pre></div>
+
+<p>The manipulation is straightforward<sup id="fnref:non-disclose"><a href="#fn:non-disclose" class="footnote">1</a></sup> — create an <code>NSMutableArray</code>, add some combination of the objects in then input array, then return the result.
+As candidates talk through it, many have misconceptions about returning the intermediate <code>NSMutableArray</code>, versus returning a ‘plain’ <code>NSArray</code>.</p>
+
+<p>Commonly, I’ll hear that you can’t or shouldn’t return a mutable array because the compiler will be confused / angry / upset.
+That’s a load of crap.
+More recently we use <a href="https://coderpad.io/">CoderPad</a> with candidates, which provides the ability to actually run the compiler.
+Upon seeing that returning the <code>NSMutableArray *</code> is totally fine, I’ve heard “Hmm, it works now, but I know I’ve seen the compiler get this wrong before”.
+(This may make the interviewer confused / angry / upset.)</p>
+
+<p>I’ll spit it out: Returning an <code>NSMutableArray *</code> value is permitted from a method that returns <code>NSArray *</code>, just as it would be from a method that returns <code>NSObject *</code>.
+<code>NSMutableArray</code> is a subclass of <code>NSArray</code>, which means a <em>mutable array is an  array</em> (they have an <a href="http://en.wikipedia.org/wiki/Is-a">is-a</a> relationship).
+In plain C, you can return a <code>char *</code> value from a method typed as <code>void *</code> for similar reasons. There are <strong>no language issues</strong> with returning a mutable array.</p>
+
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="p">-</span> <span class="p">(</span><span class="bp">NSArray</span> <span class="o">*</span><span class="p">)</span><span class="nf">arrayWithEveryOtherObjectInArray:</span><span class="p">(</span><span class="bp">NSArray</span> <span class="o">*</span><span class="p">)</span><span class="nv">input</span> <span class="p">{</span>
+    <span class="bp">NSMutableArray</span> <span class="o">*</span><span class="n">accumulator</span> <span class="o">=</span> <span class="p">[</span><span class="bp">NSMutableArray</span> <span class="n">new</span><span class="p">];</span>
+    <span class="k">for</span> <span class="p">(</span><span class="bp">NSUInteger</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">input</span><span class="p">.</span><span class="n">count</span><span class="p">;</span> <span class="n">i</span> <span class="o">+=</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="p">[</span><span class="n">accumulator</span> <span class="nl">addObject</span><span class="p">:</span><span class="n">input</span><span class="p">[</span><span class="n">i</span><span class="p">]];</span>
+    <span class="k">return</span> <span class="n">accumulator</span><span class="p">;</span>
+<span class="p">}</span></code></pre></div>
+
+<p>Another reason I’ve heard against returning the mutable instance is that it’s bad form, because the caller could then cast it back to an <code>NSMutableArray</code> and mutate it.
+That’s strictly true, but has nothing do to with the method being called.
+The caller could similarly just <code>free</code> the object pointer, and bad things would also happen.
+There are rules that code must follow if it wants reasonable behavior! </p>
+
+<p>There are times where returning a mutable value is inappropriate, but this consideration is at the API design level — on syntax and semantic analysis levels it’s fine.
+Surprising behavior will arise when you return a mutable object <em>that is later mutated</em>.
+Often this will manifest as a method returning a mutable instance variable, because instance variables are longer-lived than the above example’s local variable.</p>
+
+<p>For example, I’d expect the following assertion to hold:</p>
+
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="n">NSView</span> <span class="o">*</span><span class="n">view</span> <span class="o">=</span> <span class="p">[</span><span class="n">NSView</span> <span class="n">new</span><span class="p">];</span>
+<span class="bp">NSArray</span> <span class="o">*</span><span class="n">oldSubviews</span> <span class="o">=</span> <span class="p">[</span><span class="n">view</span> <span class="n">subviews</span><span class="p">];</span>
+<span class="p">[</span><span class="n">view</span> <span class="nl">addSubview</span><span class="p">:[</span><span class="n">NSButton</span> <span class="n">new</span><span class="p">]];</span>
+<span class="bp">NSArray</span> <span class="o">*</span><span class="n">newSubviews</span> <span class="o">=</span> <span class="p">[</span><span class="n">view</span> <span class="n">subviews</span><span class="p">];</span>
+<span class="n">asset</span><span class="p">([</span><span class="n">newSubviews</span> <span class="n">count</span><span class="p">]</span> <span class="o">&gt;</span> <span class="p">[</span><span class="n">oldSubviews</span> <span class="n">count</span><span class="p">]);</span></code></pre></div>
+
+<p>If memory serves, this assertion would actually fail a few OS releases back.
+The problem is not that the <code>-subviews</code> method returned a mutable array, the problem is that <em>it was mutated</em> after being returned.
+For the <code>-subviews</code> getter to act in an unsurprising way, one approach is to copy the mutable array that it returns (making it immutable).
+There are times where for performance it’s desirable to avoid the copy; in this case, subviews are enumerated every time something needs to draw, which should happen a lot more frequently than adding or removing subviews.</p>
+
+<p>To improve performance, the code could return the internal mutable array, while making a note that it has been returned externally.
+Then when <code>-addSubview:</code> goes to modify the internal <code>subviews</code> mutable array, it first checks the flag and sees that it needs to make a new instance so it doesn’t modify what has been given out.<sup id="fnref:retain-count-opt"><a href="#fn:retain-count-opt" class="footnote">2</a></sup></p>
+
+<p>A similar issue exists with arguments. Consider this class (styled for brevity<sup id="fnref:no-kvo"><a href="#fn:no-kvo" class="footnote">3</a></sup>):</p>
+
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="k">@interface</span> <span class="nc">NameParts</span> : <span class="bp">NSObject</span>
+<span class="k">@property</span> <span class="p">(</span><span class="k">nonatomic</span><span class="p">,</span> <span class="k">strong</span><span class="p">)</span> <span class="bp">NSString</span> <span class="o">*</span><span class="n">fullName</span><span class="p">;</span>
+<span class="k">@property</span> <span class="p">(</span><span class="k">nonatomic</span><span class="p">,</span> <span class="k">readonly</span><span class="p">)</span> <span class="bp">NSString</span> <span class="o">*</span><span class="n">firstName</span><span class="p">;</span>
+<span class="k">@end</span>
+
+<span class="k">@implementation</span> <span class="nc">NameParts</span>
+<span class="p">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">setFullName:</span><span class="p">(</span><span class="bp">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">fullName</span> <span class="p">{</span>
+    <span class="n">_fullName</span> <span class="o">=</span> <span class="n">fullName</span><span class="p">;</span>
+    <span class="n">_firstName</span> <span class="o">=</span> <span class="p">[[</span><span class="n">fullName</span> <span class="nl">componentsSeparatedByString</span><span class="p">:</span><span class="s">@&quot; &quot;</span><span class="p">]</span> <span class="n">firstObject</span><span class="p">];</span>
+<span class="p">}</span>
+<span class="k">@end</span></code></pre></div>
+
+<p>Which can be used like so:</p>
+
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="n">NameParts</span> <span class="o">*</span><span class="n">parts</span> <span class="o">=</span> <span class="p">[</span><span class="n">NameParts</span> <span class="n">new</span><span class="p">];</span>
+<span class="n">parts</span><span class="p">.</span><span class="n">fullName</span> <span class="o">=</span> <span class="s">@&quot;John Smith&quot;</span><span class="p">;</span>
+<span class="n">parts</span><span class="p">.</span><span class="n">firstName</span> <span class="c1">// =&gt; @&quot;John&quot;</span></code></pre></div>
+
+<p>This has a problem with mutability:</p>
+
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="n">NameParts</span> <span class="o">*</span><span class="n">parts</span> <span class="o">=</span> <span class="p">[</span><span class="n">NameParts</span> <span class="n">new</span><span class="p">];</span>
+<span class="bp">NSMutableString</span> <span class="o">*</span><span class="n">mutableName</span> <span class="o">=</span> <span class="p">[</span><span class="s">@&quot;John Smith&quot;</span> <span class="n">mutableCopy</span><span class="p">];</span>
+<span class="n">parts</span><span class="p">.</span><span class="n">fullName</span> <span class="o">=</span> <span class="n">mutableName</span><span class="p">;</span>
+<span class="n">parts</span><span class="p">.</span><span class="n">firstName</span> <span class="c1">// =&gt; @&quot;John&quot;</span>
+<span class="p">[</span><span class="n">mutableName</span> <span class="nl">setString</span><span class="p">:</span><span class="s">@&quot;Jack White&quot;</span><span class="p">];</span>
+
+<span class="n">parts</span><span class="p">.</span><span class="n">fullName</span> <span class="c1">// =&gt; @&quot;Jack White&quot;</span>
+<span class="n">parts</span><span class="p">.</span><span class="n">firstName</span> <span class="c1">// =&gt; @&quot;John&quot;</span></code></pre></div>
+
+<p>Previously an object was mutated after being returned; in this case the object is mutated after being passed as a parameter, also resulting in unintended behavior.
+The solution is to copy the value:</p>
+
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="p">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">setFullName:</span><span class="p">(</span><span class="bp">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">fullName</span> <span class="p">{</span>
+    <span class="n">_fullName</span> <span class="o">=</span> <span class="p">[</span><span class="n">fullName</span> <span class="k">copy</span><span class="p">];</span>
+    <span class="p">...</span></code></pre></div>
+
+<p>When not using a custom setter, you can synthesize the same behavior by marking the property as <code>copy</code> instead of <code>strong</code> (and it’s good form to do so even when you do have a custom setter).
+Immutable value classes implement <code>-copy</code> to just return self (retained), so there’s no cost worth worrying about.
+This is true even for classes that don’t have mutable counterparts like <code>NSURL</code> and <code>NSNumber</code>.
+You should do this in your own classes.
+For <a href="http://www.cocoabuilder.com/archive/cocoa/65056-what-an-nszone.html">legacy reasons</a> it’s actually best to accomplish this by overriding <code>-copyWithZone:</code><sup id="fnref:copy-with-zone"><a href="#fn:copy-with-zone" class="footnote">4</a></sup>, like so:</p>
+
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="p">-</span> <span class="p">(</span><span class="kt">id</span><span class="p">)</span><span class="nf">copyWithZone:</span><span class="p">(</span><span class="n">NSZone</span> <span class="o">*</span><span class="p">)</span><span class="nv">zone</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nb">self</span><span class="p">;</span> <span class="c1">// immutable object</span>
+<span class="p">}</span></code></pre></div>
+
+<p>In fact, the behavior of Cocoa’s <code>-copy</code> method is not obvious.
+For classes with immutable variants (such as <code>NSString</code>, <code>NSArray</code>), <code>-copy</code> returns an immutable instance, and <code>-mutableCopy</code> returns a mutable instance.
+For mutable classes <em>without</em> immutable variants (<code>NSFetchRequest</code>, <code>NSAffineTransform</code>), <code>-copy</code> returns a “mutable” copy because that’s the only kind of copy; <code>-mutableCopy</code> is left unimplemented.
+Perhaps we can reconcile this by saying that <code>-copy</code> returns <em>an instance that won’t change when some other instance is mutated.</em></p>
+
+<p>Don’t fear the mutable.
+Separating mutable and immutable objects is one of Cocoa’s great strengths, while many other libraries have taken much longer to learn of its virtues — particularly relevant in a multi-threaded environment.
+Incidentally, not separating mutable and immutable is one of Core Data’s great weaknesses, but that’s a post for another time.</p>
+
+<p>Also, know your limits.
+When you’re asked a technical question in an interview or otherwise, please either answer it correctly (great) or say you don’t know (no problem, you can look it up); don’t say you <em>do</em> know but give a wrong answer.
+That tends to indicates you <em>wouldn’t</em> look it up, and would blindly do the wrong thing.</p>
+<div class="footnotes">
+  <ol>
+    <li id="fn:non-disclose">
+      <p>Because we plan to keep asking for the same task from new candidates, I won’t be more specific. <a href="#fnref:non-disclose" class="reversefootnote">&#8617;</a></p>
+    </li>
+    <li id="fn:retain-count-opt">
+      <p>It might even be possible to optimize this further, by checking the retain count of the mutable array — if it’s 1, even if the array had been returned before, the code <em>might</em> be able to infer that no one else has a reference to it, and modify it regardless of the “returned externally” flag. But beware, it wouldn’t be possible to rely on this behavior before ARC — calling code might elide retain/release — which means it’s probably not safe to rely on it under ARC-with-optimizations. <a href="#fnref:retain-count-opt" class="reversefootnote">&#8617;</a></p>
+    </li>
+    <li id="fn:no-kvo">
+      <p>The <code>firstName</code> property is changed without posting KVO notifications. <a href="#fnref:no-kvo" class="reversefootnote">&#8617;</a></p>
+    </li>
+    <li id="fn:copy-with-zone">
+      <p><code>-copy</code> calls <code>-copyWithZone:</code>. <a href="#fnref:copy-with-zone" class="reversefootnote">&#8617;</a></p>
+    </li>
+  </ol>
+</div>
+
+	</div>
+</article>
+
+
+		<footer>
+			<p>dev etc is written by Jonathon Mah.</p>
+			<ul class="contact">
+				<li>me <span>AT</span> JonathonMah.com</li>
+				<li><a href="https://github.com/jmah">github.com/jmah</a></li>
+				<li><a href="https://twitter.com/dev_etc">twitter.com/dev_etc</a></li>
+			</ul>
+		</footer>
+
+	</body>
+</html>
