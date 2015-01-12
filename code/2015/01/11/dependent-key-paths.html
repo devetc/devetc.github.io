@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+		<title>dev etc : Dependent Key Paths</title>
+		<meta name="viewport" content="width=device-width">
+
+		<link rel="alternate" type="application/rss+xml" title="dev etc" href="/feed.xml">
+
+		<!-- syntax highlighting CSS -->
+		<link rel="stylesheet" href="/css/syntax.css">
+
+		<!-- Custom CSS -->
+		<link rel="stylesheet" href="/css/main.css">
+		<link rel="stylesheet" href="/css/quine.css">
+
+		<!-- Footnotes -->
+		<script src="/js/inline-footnotes.js"></script>
+
+		<!-- Google Analytics -->
+		<script>
+		(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+		(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+		m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+		})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+		ga('create', 'UA-44839563-1', 'devetc.org');
+		ga('send', 'pageview');
+		</script>
+
+	</head>
+	<body>
+
+		<header>
+			<h1><a href="/">dev etc</a></h1>
+			<div class="subtitle">Where mistakes go to die.</div>
+		</header>
+
+		<article>
+	<h1>Dependent Key Paths</h1>
+	<div class="subtitle">World first! How to correctly override +keyPathsForValuesAffectingValueForKey:</div>
+	<div class="post-date">Published on Sunday, 2015-01-11.</div>
+
+	<div class="post">
+	<p>Much can be said about <a href="kvo">key–value observing</a> (KVO).
+At very least, it’s an interesting use of Objective-C’s runtime dynamism.
+The Apple-provided API is rudimentary; I like to layer something on top that calls a block instead of a method that needs its own dispatch table.
+Other libraries like <a href="https://github.com/ReactiveCocoa/ReactiveCocoa">ReactiveCocoa</a> wrap it in its own conventions.</p>
+
+<p>But that higher-level stuff is a discussion for another time.
+Right now I want to talk about key path dependencies.</p>
+
+<p>Key–value observing supports notifications both directly and indirectly.
+Direct notifications, via <code>[self willChangeValueForKey:@"foo"]</code> and <code>[self didChangeValueForKey:@"foo"]</code>, are automatically wrapped around the corresponding <code>-setFoo:</code> setter implementation method (by default).</p>
+
+<p>But some properties don’t have direct setters.
+The canonical<sup id="fnref:fn-names"><a href="#fn:fn-names" class="footnote">1</a></sup> example for this is this class:</p>
+
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="k">@interface</span> <span class="nc">Person</span> : <span class="bp">NSObject</span>
+<span class="k">@property</span> <span class="p">(</span><span class="k">copy</span><span class="p">)</span> <span class="bp">NSString</span> <span class="o">*</span><span class="n">givenName</span><span class="p">;</span>
+<span class="k">@property</span> <span class="p">(</span><span class="k">copy</span><span class="p">)</span> <span class="bp">NSString</span> <span class="o">*</span><span class="n">familyName</span><span class="p">;</span>
+<span class="k">@property</span> <span class="p">(</span><span class="k">readonly</span><span class="p">)</span> <span class="bp">NSString</span> <span class="o">*</span><span class="n">fullName</span><span class="p">;</span>
+<span class="k">@end</span>
+
+<span class="k">@implementation</span> <span class="nc">Person</span>
+<span class="p">-</span> <span class="p">(</span><span class="bp">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nf">fullName</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="p">[</span><span class="l">@[</span><span class="nb">self</span><span class="p">.</span><span class="n">givenName</span><span class="p">,</span> <span class="nb">self</span><span class="p">.</span><span class="n">familyName</span><span class="l">]</span> <span class="nl">componentsJoinedByString</span><span class="p">:</span><span class="s">@&quot; &quot;</span><span class="p">];</span>
+<span class="p">}</span>
+<span class="k">@end</span></code></pre></div>
+
+<p>The <code>fullName</code> getter depends on <code>givenName</code> and <code>familyName</code>.
+As such it should be annotated as depending on those key paths, so that when an object registers to observe <code>fullName</code> it will get a notification when <code>-setGivenName:</code> and <code>-setFamilyName:</code> are called.</p>
+
+<p>The <a href="https://developer.apple.com/library/mac/documentation/Cocoa/Conceptual/KeyValueObserving/Articles/KVODependentKeys.html#//apple_ref/doc/uid/20002179-BAJEAIEE">+keyPathsForValuesAffectingValueForKey:</a> method marks that dependency.
+The usual way to specify the above dependency is to implement a method with a special naming convention:</p>
+
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="k">@implementation</span> <span class="nc">Person</span>
+<span class="p">+</span> <span class="p">(</span><span class="bp">NSSet</span> <span class="o">*</span><span class="p">)</span><span class="nf">keyPathsForValuesAffectingFullName</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="p">[</span><span class="bp">NSSet</span> <span class="nl">setWithObjects</span><span class="p">:</span><span class="s">@&quot;givenName&quot;</span><span class="p">,</span> <span class="s">@&quot;familyName&quot;</span><span class="p">,</span> <span class="nb">nil</span><span class="p">];</span>
+<span class="p">}</span>
+<span class="p">-</span> <span class="p">(</span><span class="bp">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nf">fullName</span> <span class="p">{</span> <span class="err">…</span> <span class="p">}</span>
+<span class="k">@end</span></code></pre></div>
+
+<p>The default implementation of <code>+keyPathsForValuesAffectingValueForKey:</code> dispatches to the method with this name (if any), just as <code>-valueForKey:@"givenName"</code> dispatches to <code>-givenName</code> and <code>-setValue: forKey:@"givenName"</code> dispatches to <code>-setGivenName:</code>.</p>
+
+<h2 id="dependency-helpers">Dependency helpers</h2>
+
+<p>A common case that comes up is:</p>
+
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="k">@implementation</span> <span class="nc">SomeSingleton</span>
+<span class="p">-</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">mySetting</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="p">[[</span><span class="bp">NSUserDefaults</span> <span class="n">standardUserDefaults</span><span class="p">]</span> <span class="nl">boolForKey</span><span class="p">:</span><span class="s">@&quot;someKey&quot;</span><span class="p">];</span>
+<span class="p">}</span>
+<span class="k">@end</span></code></pre></div>
+
+<p>If user defaults can change separately from this code (and you should probably assume it can), providing correct KVO change notifications can be accomplished by having the singleton observe <code>NSUserDefaults</code> with <code>NSKeyValueObservingOptionPrior</code>; posting <code>willChangeValueForKey:@"mySetting"</code> on the prior callback and <code>didChangeValueForKey:@"mySetting"</code> on the post callback.
+But this sucks — it’s wordy and you pay a (small) performance cost even if <code>mySetting</code> isn’t observed.</p>
+
+<p>A simpler and more efficient approach is this:</p>
+
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="k">@implementation</span> <span class="nc">SomeSingleton</span>
+<span class="p">+</span> <span class="p">(</span><span class="bp">NSSet</span> <span class="o">*</span><span class="p">)</span><span class="nf">keyPathsForValuesAffectingMySetting</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="p">[</span><span class="bp">NSSet</span> <span class="nl">setWithObject</span><span class="p">:</span><span class="s">@&quot;$defaults.someKey&quot;</span><span class="p">];</span>
+<span class="p">}</span>
+<span class="p">-</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">mySetting</span> <span class="p">{</span> <span class="err">…</span> <span class="p">}</span>
+<span class="p">-</span> <span class="p">(</span><span class="bp">NSUserDefaults</span> <span class="o">*</span><span class="p">)</span><span class="nf">$defaults</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="p">[</span><span class="bp">NSUserDefaults</span> <span class="n">standardUserDefaults</span><span class="p">];</span>
+<span class="p">}</span>
+<span class="k">@end</span></code></pre></div>
+
+<p><a href="https://github.com/jmah/MyLilKeyPathHelpers">MyLilKeyPathHelpers</a> adds this shortcut and a couple of others as a category on <code>NSObject</code><sup id="fnref:fn-avoid-categories"><a href="#fn:fn-avoid-categories" class="footnote">2</a></sup>:</p>
+
+<ul>
+  <li><code>$defaults</code> for <code>[NSUserDefaults standardUserDefaults]</code></li>
+  <li><code>$app</code> for the global shared <code>NSApplication</code> or <code>UIApplication</code> instance (handy as <code>$app.delegate.someKey</code>)</li>
+  <li><code>$classes</code> as a generic method for the above: for example, <code>$classes.SomeSingleton.sharedInstance.someKey</code></li>
+</ul>
+
+<p>These make it easier to get properties KVO-compliant.
+And yes, it’s legal to use <code>$</code> in identifiers, but be very restrained with it!</p>
+
+<h2 id="specifying-dependencies">Specifying dependencies</h2>
+
+<p>Instead of implementing the dependency method with a special name, it can be convenient to override the top-level method directly.
+For example, each item in <a href="http://delicious-monster.com/">Delicious Library</a> has properties for fields like title, author, LCCN<sup id="fnref:fn-lccn"><a href="#fn:fn-lccn" class="footnote">3</a></sup>, and notes.
+Sorting by these fields sometimes requires custom behavior — for example, sorting by author attempts to massage “Malcolm Gladwell” into “Gladwell, Malcolm”.</p>
+
+<p>The way we implement this is to append “ForSorting” to each sort descriptor key.
+Then we can provide an <code>-authorForSorting</code> method with this custom behavior.
+We also override <code>-valueForKey:</code> to strip “ForSorting” if the object didn’t have a custom implementation, and just return the plain value.</p>
+
+<p><code>NSArrayController</code> observes the keys of its sort descriptors to rearrange (re-sort) when one of the values change.
+Accordingly, the “ForSorting” keys needed to be KVO-compliant.
+Just as we override the dispatching <code>-valueForKey:</code> method, we also overrode <code>+keyPathsForValuesAffectingValueForKey:</code> to declare (by default)<sup id="fnref:fn-custom-deps"><a href="#fn:fn-custom-deps" class="footnote">4</a></sup> that <code>authorForSorting</code> depends on <code>author</code>.</p>
+
+<h2 id="hell-is-other-peoples-superclasses">Hell is other people’s superclasses</h2>
+
+<p><a href="sicp">SICP</a> made me a convert to the idea of composability.
+When building a component on top of another — in this case, writing a class by subclassing <code>NSObjet</code> — ideally you can build use on top of it in the same manner the original was constructed.
+That is, your class should behave correctly when used as a superclass.</p>
+
+<p>Let’s see what happens when we extend behavior of our original <code>Person</code> class by subclassing.
+The <code>FancyPerson</code> class provides behavior for “John Smith, Esquire”, and <code>TitledPerson</code> provides “Mr Smith”.</p>
+
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="k">@interface</span> <span class="nc">FancyPerson</span> : <span class="nc">Person</span>
+<span class="k">@property</span> <span class="p">(</span><span class="k">copy</span><span class="p">)</span> <span class="bp">NSString</span> <span class="o">*</span><span class="n">suffix</span><span class="p">;</span>
+<span class="k">@end</span>
+
+<span class="k">@implementation</span> <span class="nc">FancyPerson</span>
+<span class="p">-</span> <span class="p">(</span><span class="bp">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nf">fullName</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="p">[</span><span class="l">@[</span><span class="p">[</span><span class="nb">super</span> <span class="n">fullName</span><span class="p">],</span> <span class="nb">self</span><span class="p">.</span><span class="n">suffix</span><span class="l">]</span> <span class="nl">componentsJoinedByString</span><span class="p">:</span><span class="s">@&quot;, &quot;</span><span class="p">];</span>
+<span class="p">}</span>
+<span class="k">@end</span>
+
+<span class="k">@interface</span> <span class="nc">TitledPerson</span> : <span class="nc">Person</span>
+<span class="k">@property</span> <span class="p">(</span><span class="k">copy</span><span class="p">)</span> <span class="bp">NSString</span> <span class="o">*</span><span class="n">title</span><span class="p">;</span>
+<span class="k">@end</span>
+
+<span class="k">@implementation</span> <span class="nc">TitledPerson</span>
+<span class="p">-</span> <span class="p">(</span><span class="bp">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nf">fullName</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="p">[</span><span class="l">@[</span><span class="nb">self</span><span class="p">.</span><span class="n">title</span><span class="p">,</span> <span class="nb">self</span><span class="p">.</span><span class="n">familyName</span><span class="l">]</span> <span class="nl">componentsJoinedByString</span><span class="p">:</span><span class="s">@&quot; &quot;</span><span class="p">];</span>
+<span class="p">}</span>
+<span class="k">@end</span></code></pre></div>
+
+<p>Both of these demonstrate a different behavior:
+<code>FancyPerson</code> <em>enhances</em> the <code>fullName</code> method, by calling super and supplementing the return value.
+<code>TitledPerson</code> <em>replaces</em> the <code>fullName</code> method, with no call to <code>[super fullName]</code>.
+Accordingly, <code>-[FancyPerson fullName]</code> should declare that it depends on whatever <code>-[Person fullName]</code> depends on, plus the <code>suffix</code> key.
+And <code>-[TitledPerson fullName]</code> depends on only <code>title</code> and <code>familyName</code>, regardless of the superclass.</p>
+
+<p>Let’s start with the enhancement case.</p>
+
+<h3 id="enhancing-key-path-dependencies">Enhancing key path dependencies</h3>
+
+<p>The naive approach has a compile error:</p>
+
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="k">@implementation</span> <span class="nc">FancyPerson</span>
+<span class="p">+</span> <span class="p">(</span><span class="bp">NSSet</span> <span class="o">*</span><span class="p">)</span><span class="nf">keyPathsForValuesAffectingFullName</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="p">[[</span><span class="nb">super</span> <span class="n">keyPathsForValuesAffectingFullName</span><span class="p">]</span> <span class="nl">setByAddingObject</span><span class="p">:</span><span class="s">@&quot;suffix&quot;</span><span class="p">];</span>
+    <span class="c1">// error: no known class method for selector &#39;keyPathsForValuesAffectingFullName&#39;</span>
+<span class="p">}</span>
+<span class="k">@end</span></code></pre></div>
+
+<p>Key path dependencies are typically private, not declared in a class’s interface, so the call to super will be a warning or error.
+You could declare that you <em>know</em> the superclass to implement that method, but that couples to the implementation and may not be correct if <code>Person</code> is instead overriding the dispatching method <code>+keyPathsForValuesAffectingValueForKey:</code>.</p>
+
+<p>Similar to <a href="/code/2014/03/02/subclassing-delegates.html">subclassing delegates</a>, the correct solution is to use the defining class<sup id="fnref:fn-defining-class"><a href="#fn:fn-defining-class" class="footnote">5</a></sup>:</p>
+
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="k">@implementation</span> <span class="nc">FancyPerson</span>
+<span class="p">+</span> <span class="p">(</span><span class="bp">NSSet</span> <span class="o">*</span><span class="p">)</span><span class="nf">keyPathsForValuesAffectingFullName</span> <span class="p">{</span>
+    <span class="bp">NSSet</span> <span class="o">*</span><span class="n">superclassKeys</span> <span class="o">=</span> <span class="p">[[</span><span class="n">FancyPerson</span> <span class="n">superclass</span><span class="p">]</span> <span class="nl">keyPathsForValuesAffectingValueForKey</span><span class="p">:</span><span class="s">@&quot;fullName&quot;</span><span class="p">];</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">superclassKeys</span> <span class="nl">setByAddingObject</span><span class="p">:</span><span class="s">@&quot;suffix&quot;</span><span class="p">];</span>
+<span class="p">}</span>
+<span class="k">@end</span></code></pre></div>
+
+<p>This is robust against the superclass’s implementation, no matter if it specifies dependencies by implementing the specific method, overriding the dispatching one, or none at all.</p>
+
+<h3 id="replacing-key-path-dependencies">Replacing key path dependencies</h3>
+
+<p>Now let’s consider <code>TitledPerson</code>’s override:</p>
+
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="k">@implementation</span> <span class="nc">TitledPerson</span>
+<span class="p">+</span> <span class="p">(</span><span class="bp">NSSet</span> <span class="o">*</span><span class="p">)</span><span class="nf">keyPathsForValuesAffectingFullName</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="p">[</span><span class="bp">NSSet</span> <span class="nl">setWithObjects</span><span class="p">:</span><span class="s">@&quot;title&quot;</span><span class="p">,</span> <span class="s">@&quot;familyName&quot;</span><span class="p">,</span> <span class="nb">nil</span><span class="p">];</span>
+<span class="p">}</span>
+<span class="k">@end</span></code></pre></div>
+
+<p>This is fine.
+However there will be a problem if <code>Person</code> were to instead override the dispatching method:</p>
+
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="k">@implementation</span> <span class="nc">Person</span>
+<span class="p">+</span> <span class="p">(</span><span class="bp">NSSet</span> <span class="o">*</span><span class="p">)</span><span class="nf">keyPathsForValuesAffectingValueForKey:</span><span class="p">(</span><span class="bp">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">key</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">([</span><span class="n">key</span> <span class="nl">isEqual</span><span class="p">:</span><span class="s">@&quot;fullName&quot;</span><span class="p">])</span> <span class="p">{</span> <span class="c1">// don&#39;t do this</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">NSSet</span> <span class="nl">setWithObjects</span><span class="p">:</span><span class="s">@&quot;givenName&quot;</span><span class="p">,</span> <span class="s">@&quot;familyName&quot;</span><span class="p">,</span> <span class="nb">nil</span><span class="p">];</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="p">[</span><span class="nb">super</span> <span class="nl">keyPathsForValuesAffectingValueForKey</span><span class="p">:</span><span class="n">key</span><span class="p">];</span>
+    <span class="p">}</span>
+<span class="p">}</span></code></pre></div>
+
+<p>In this case, the call <code>[TitledPerson keyPathsForValuesAffectingValueForKey:@"fullName"]</code> completely ignores the <code>TitledPerson</code> override!
+Specifically, only when the call to super hits <code>NSObject</code>’s implementation of <code>+keyPathsForValuesAffectingValueForKey:</code> will the subclass’s override of <code>+keyPathsForValuesAffectingFullName</code> be called.
+You are in a maze of twisty little passages, all alike.</p>
+
+<p>The problem here is the naive implementation of the <code>+[Person keyPathsForValuesAffectingValueForKey:]</code> override.</p>
+
+<h2 id="correctly-overriding-keypathsforvaluesaffectingvalueforkey">Correctly overriding +keyPathsForValuesAffectingValueForKey:</h2>
+
+<p>It’s valid for dependencies to be specified in <em>either</em> the dispatching or specific methods, all the way up the inheritance chain.
+Correctly overriding <code>+keyPathsForValuesAffectingValueForKey:</code> requires some tricky code, which I’ve wrapped in a function <a href="https://github.com/jmah/MyLilKeyPathHelpers/blob/7ed5da8355090b27ceeeb02a20baa7bf7a63eb8a/MyLilKeyPathHelpers/MLHDependentKeyPaths.m#L41">MLHOverrideKeyPathsForValueAffectingKey</a> in <a href="https://github.com/jmah/MyLilKeyPathHelpers">MyLilKeyPathHelpers</a>.</p>
+
+<p>The <code>Person</code> class can use this to correctly override the dispatching method:</p>
+
+<div class="highlight"><pre><code class="language-objc" data-lang="objc"><span class="k">@implementation</span> <span class="nc">Person</span>
+<span class="p">+</span> <span class="p">(</span><span class="bp">NSSet</span> <span class="o">*</span><span class="p">)</span><span class="nf">keyPathsForValuesAffectingValueForKey:</span><span class="p">(</span><span class="bp">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">key</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">MLHOverrideKeyPathsForValueAffectingKey</span><span class="p">(</span><span class="nb">self</span><span class="p">,</span> <span class="p">[</span><span class="n">Person</span> <span class="k">class</span><span class="p">],</span> <span class="nb">NO</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="o">^</span><span class="p">(</span><span class="bp">NSSet</span> <span class="o">*</span><span class="n">superKeyPaths</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">([</span><span class="n">key</span> <span class="nl">isEqual</span><span class="p">:</span><span class="s">@&quot;fullName&quot;</span><span class="p">])</span> <span class="p">{</span> <span class="c1">// or -hasSuffix:, etc.</span>
+            <span class="k">return</span> <span class="p">[</span><span class="bp">NSSet</span> <span class="nl">setWithObjects</span><span class="p">:</span><span class="s">@&quot;givenName&quot;</span><span class="p">,</span> <span class="s">@&quot;familyName&quot;</span><span class="p">,</span> <span class="nb">nil</span><span class="p">];</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="n">superKeyPaths</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">});</span>
+<span class="p">}</span>
+<span class="k">@end</span></code></pre></div>
+
+<p>With this implementation, calling <code>[TitledPerson keyPathsForValuesAffectingValueForKey:@"fullName"]</code> results in a call to <code>[TitledPerson keyPathsForValuesAffectingFullName]</code> and that’s all.
+Accomplishing this unfortunately requires a reimplementation of the method name logic in <code>NSObject</code>’s <code>+keyPathsForValuesAffectingValueForKey:</code>; I believe this is inescapable.</p>
+
+<p>All the parameters to this function are documented in the <a href="https://github.com/jmah/MyLilKeyPathHelpers/blob/7ed5da8355090b27ceeeb02a20baa7bf7a63eb8a/MyLilKeyPathHelpers/MLHDependentKeyPaths.h#L35">header</a>; take a look.
+This same technique could be applied to an override of <code>-valueForKey:</code>, though that generally doesn’t have the same issues because the dispatch targets (that is, getter methods) <em>are</em> declared in a class’s public interface.</p>
+<div class="footnotes">
+  <ol>
+    <li id="fn:fn-names">
+      <p>and ridden with Anglo-centric cultural assumptions; see <a href="http://www.kalzumeus.com/2010/06/17/falsehoods-programmers-believe-about-names/">Falsehoods Programmers Believe About Names</a> <a href="#fnref:fn-names" class="reversefootnote">&#8617;</a></p>
+    </li>
+    <li id="fn:fn-avoid-categories">
+      <p>As a rule I try to avoid categories on framework classes as much as possible. I feel this is one of the rare cases when it’s appropriate. <a href="#fnref:fn-avoid-categories" class="reversefootnote">&#8617;</a></p>
+    </li>
+    <li id="fn:fn-lccn">
+      <p><a href="http://en.wikipedia.org/wiki/Library_of_Congress_Control_Number">Library of Congress Control Number</a> <a href="#fnref:fn-lccn" class="reversefootnote">&#8617;</a></p>
+    </li>
+    <li id="fn:fn-custom-deps">
+      <p>Some “ForSorting” values depend on more than one key. For example, <code>-titleForSorting</code> depends on both <code>title</code> and <code>dominantLanguageCode</code>, so “Die Another Day” sorts under “D” while your German copy of “Die Bourne Identität” sorts under “B”. Incidentally this causes a lot of user confusion when the language information is not correct. <a href="#fnref:fn-custom-deps" class="reversefootnote">&#8617;</a></p>
+    </li>
+    <li id="fn:fn-defining-class">
+      <p><a href="mlkph">MyLilKeyPathHelpers</a> provides a helper macro for this called <code>_definingClass</code>: <a href="#fnref:fn-defining-class" class="reversefootnote">&#8617;</a></p>
+    </li>
+  </ol>
+</div>
+
+	</div>
+</article>
+
+
+		<footer>
+			<p>dev etc is written by Jonathon Mah.</p>
+			<ul class="contact">
+				<li>me <span>AT</span> JonathonMah.com</li>
+				<li><a href="https://github.com/jmah">github.com/jmah</a></li>
+				<li><a href="https://twitter.com/dev_etc">twitter.com/dev_etc</a></li>
+			</ul>
+		</footer>
+
+	</body>
+</html>

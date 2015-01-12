@@ -7,6 +7,238 @@
 		<atom:link href="http://devetc.orgfeed.xml" rel="self" type="application/rss+xml" />
 		
 			<item>
+				<title>Dependent Key Paths</title>
+				<description>&lt;p&gt;Much can be said about &lt;a href=&quot;kvo&quot;&gt;key–value observing&lt;/a&gt; (KVO).
+At very least, it’s an interesting use of Objective-C’s runtime dynamism.
+The Apple-provided API is rudimentary; I like to layer something on top that calls a block instead of a method that needs its own dispatch table.
+Other libraries like &lt;a href=&quot;https://github.com/ReactiveCocoa/ReactiveCocoa&quot;&gt;ReactiveCocoa&lt;/a&gt; wrap it in its own conventions.&lt;/p&gt;
+
+&lt;p&gt;But that higher-level stuff is a discussion for another time.
+Right now I want to talk about key path dependencies.&lt;/p&gt;
+
+&lt;p&gt;Key–value observing supports notifications both directly and indirectly.
+Direct notifications, via &lt;code&gt;[self willChangeValueForKey:@&quot;foo&quot;]&lt;/code&gt; and &lt;code&gt;[self didChangeValueForKey:@&quot;foo&quot;]&lt;/code&gt;, are automatically wrapped around the corresponding &lt;code&gt;-setFoo:&lt;/code&gt; setter implementation method (by default).&lt;/p&gt;
+
+&lt;p&gt;But some properties don’t have direct setters.
+The canonical&lt;sup id=&quot;fnref:fn-names&quot;&gt;&lt;a href=&quot;#fn:fn-names&quot; class=&quot;footnote&quot;&gt;1&lt;/a&gt;&lt;/sup&gt; example for this is this class:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-objc&quot; data-lang=&quot;objc&quot;&gt;&lt;span class=&quot;k&quot;&gt;@interface&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Person&lt;/span&gt; : &lt;span class=&quot;bp&quot;&gt;NSObject&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@property&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;copy&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;NSString&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;givenName&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@property&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;copy&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;NSString&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;familyName&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@property&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;readonly&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;NSString&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fullName&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;@implementation&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Person&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSString&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;fullName&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;l&quot;&gt;@[&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;givenName&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;familyName&lt;/span&gt;&lt;span class=&quot;l&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;componentsJoinedByString&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;@&amp;quot; &amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;The &lt;code&gt;fullName&lt;/code&gt; getter depends on &lt;code&gt;givenName&lt;/code&gt; and &lt;code&gt;familyName&lt;/code&gt;.
+As such it should be annotated as depending on those key paths, so that when an object registers to observe &lt;code&gt;fullName&lt;/code&gt; it will get a notification when &lt;code&gt;-setGivenName:&lt;/code&gt; and &lt;code&gt;-setFamilyName:&lt;/code&gt; are called.&lt;/p&gt;
+
+&lt;p&gt;The &lt;a href=&quot;https://developer.apple.com/library/mac/documentation/Cocoa/Conceptual/KeyValueObserving/Articles/KVODependentKeys.html#//apple_ref/doc/uid/20002179-BAJEAIEE&quot;&gt;+keyPathsForValuesAffectingValueForKey:&lt;/a&gt; method marks that dependency.
+The usual way to specify the above dependency is to implement a method with a special naming convention:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-objc&quot; data-lang=&quot;objc&quot;&gt;&lt;span class=&quot;k&quot;&gt;@implementation&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Person&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSSet&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;keyPathsForValuesAffectingFullName&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSSet&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;setWithObjects&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;@&amp;quot;givenName&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;@&amp;quot;familyName&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;nil&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSString&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;fullName&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;…&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;The default implementation of &lt;code&gt;+keyPathsForValuesAffectingValueForKey:&lt;/code&gt; dispatches to the method with this name (if any), just as &lt;code&gt;-valueForKey:@&quot;givenName&quot;&lt;/code&gt; dispatches to &lt;code&gt;-givenName&lt;/code&gt; and &lt;code&gt;-setValue: forKey:@&quot;givenName&quot;&lt;/code&gt; dispatches to &lt;code&gt;-setGivenName:&lt;/code&gt;.&lt;/p&gt;
+
+&lt;h2 id=&quot;dependency-helpers&quot;&gt;Dependency helpers&lt;/h2&gt;
+
+&lt;p&gt;A common case that comes up is:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-objc&quot; data-lang=&quot;objc&quot;&gt;&lt;span class=&quot;k&quot;&gt;@implementation&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;SomeSingleton&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;BOOL&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;mySetting&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[[&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSUserDefaults&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;standardUserDefaults&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;boolForKey&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;@&amp;quot;someKey&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;If user defaults can change separately from this code (and you should probably assume it can), providing correct KVO change notifications can be accomplished by having the singleton observe &lt;code&gt;NSUserDefaults&lt;/code&gt; with &lt;code&gt;NSKeyValueObservingOptionPrior&lt;/code&gt;; posting &lt;code&gt;willChangeValueForKey:@&quot;mySetting&quot;&lt;/code&gt; on the prior callback and &lt;code&gt;didChangeValueForKey:@&quot;mySetting&quot;&lt;/code&gt; on the post callback.
+But this sucks — it’s wordy and you pay a (small) performance cost even if &lt;code&gt;mySetting&lt;/code&gt; isn’t observed.&lt;/p&gt;
+
+&lt;p&gt;A simpler and more efficient approach is this:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-objc&quot; data-lang=&quot;objc&quot;&gt;&lt;span class=&quot;k&quot;&gt;@implementation&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;SomeSingleton&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSSet&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;keyPathsForValuesAffectingMySetting&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSSet&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;setWithObject&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;@&amp;quot;$defaults.someKey&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;BOOL&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;mySetting&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;…&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSUserDefaults&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;$defaults&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSUserDefaults&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;standardUserDefaults&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://github.com/jmah/MyLilKeyPathHelpers&quot;&gt;MyLilKeyPathHelpers&lt;/a&gt; adds this shortcut and a couple of others as a category on &lt;code&gt;NSObject&lt;/code&gt;&lt;sup id=&quot;fnref:fn-avoid-categories&quot;&gt;&lt;a href=&quot;#fn:fn-avoid-categories&quot; class=&quot;footnote&quot;&gt;2&lt;/a&gt;&lt;/sup&gt;:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;code&gt;$defaults&lt;/code&gt; for &lt;code&gt;[NSUserDefaults standardUserDefaults]&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;code&gt;$app&lt;/code&gt; for the global shared &lt;code&gt;NSApplication&lt;/code&gt; or &lt;code&gt;UIApplication&lt;/code&gt; instance (handy as &lt;code&gt;$app.delegate.someKey&lt;/code&gt;)&lt;/li&gt;
+  &lt;li&gt;&lt;code&gt;$classes&lt;/code&gt; as a generic method for the above: for example, &lt;code&gt;$classes.SomeSingleton.sharedInstance.someKey&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;These make it easier to get properties KVO-compliant.
+And yes, it’s legal to use &lt;code&gt;$&lt;/code&gt; in identifiers, but be very restrained with it!&lt;/p&gt;
+
+&lt;h2 id=&quot;specifying-dependencies&quot;&gt;Specifying dependencies&lt;/h2&gt;
+
+&lt;p&gt;Instead of implementing the dependency method with a special name, it can be convenient to override the top-level method directly.
+For example, each item in &lt;a href=&quot;http://delicious-monster.com/&quot;&gt;Delicious Library&lt;/a&gt; has properties for fields like title, author, LCCN&lt;sup id=&quot;fnref:fn-lccn&quot;&gt;&lt;a href=&quot;#fn:fn-lccn&quot; class=&quot;footnote&quot;&gt;3&lt;/a&gt;&lt;/sup&gt;, and notes.
+Sorting by these fields sometimes requires custom behavior — for example, sorting by author attempts to massage “Malcolm Gladwell” into “Gladwell, Malcolm”.&lt;/p&gt;
+
+&lt;p&gt;The way we implement this is to append “ForSorting” to each sort descriptor key.
+Then we can provide an &lt;code&gt;-authorForSorting&lt;/code&gt; method with this custom behavior.
+We also override &lt;code&gt;-valueForKey:&lt;/code&gt; to strip “ForSorting” if the object didn’t have a custom implementation, and just return the plain value.&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;NSArrayController&lt;/code&gt; observes the keys of its sort descriptors to rearrange (re-sort) when one of the values change.
+Accordingly, the “ForSorting” keys needed to be KVO-compliant.
+Just as we override the dispatching &lt;code&gt;-valueForKey:&lt;/code&gt; method, we also overrode &lt;code&gt;+keyPathsForValuesAffectingValueForKey:&lt;/code&gt; to declare (by default)&lt;sup id=&quot;fnref:fn-custom-deps&quot;&gt;&lt;a href=&quot;#fn:fn-custom-deps&quot; class=&quot;footnote&quot;&gt;4&lt;/a&gt;&lt;/sup&gt; that &lt;code&gt;authorForSorting&lt;/code&gt; depends on &lt;code&gt;author&lt;/code&gt;.&lt;/p&gt;
+
+&lt;h2 id=&quot;hell-is-other-peoples-superclasses&quot;&gt;Hell is other people’s superclasses&lt;/h2&gt;
+
+&lt;p&gt;&lt;a href=&quot;sicp&quot;&gt;SICP&lt;/a&gt; made me a convert to the idea of composability.
+When building a component on top of another — in this case, writing a class by subclassing &lt;code&gt;NSObjet&lt;/code&gt; — ideally you can build use on top of it in the same manner the original was constructed.
+That is, your class should behave correctly when used as a superclass.&lt;/p&gt;
+
+&lt;p&gt;Let’s see what happens when we extend behavior of our original &lt;code&gt;Person&lt;/code&gt; class by subclassing.
+The &lt;code&gt;FancyPerson&lt;/code&gt; class provides behavior for “John Smith, Esquire”, and &lt;code&gt;TitledPerson&lt;/code&gt; provides “Mr Smith”.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-objc&quot; data-lang=&quot;objc&quot;&gt;&lt;span class=&quot;k&quot;&gt;@interface&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;FancyPerson&lt;/span&gt; : &lt;span class=&quot;nc&quot;&gt;Person&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@property&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;copy&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;NSString&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;suffix&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;@implementation&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;FancyPerson&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSString&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;fullName&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;l&quot;&gt;@[&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;super&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fullName&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;suffix&lt;/span&gt;&lt;span class=&quot;l&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;componentsJoinedByString&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;@&amp;quot;, &amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;@interface&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;TitledPerson&lt;/span&gt; : &lt;span class=&quot;nc&quot;&gt;Person&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@property&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;copy&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;NSString&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;title&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;@implementation&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;TitledPerson&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSString&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;fullName&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;l&quot;&gt;@[&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;title&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;familyName&lt;/span&gt;&lt;span class=&quot;l&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;componentsJoinedByString&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;@&amp;quot; &amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Both of these demonstrate a different behavior:
+&lt;code&gt;FancyPerson&lt;/code&gt; &lt;em&gt;enhances&lt;/em&gt; the &lt;code&gt;fullName&lt;/code&gt; method, by calling super and supplementing the return value.
+&lt;code&gt;TitledPerson&lt;/code&gt; &lt;em&gt;replaces&lt;/em&gt; the &lt;code&gt;fullName&lt;/code&gt; method, with no call to &lt;code&gt;[super fullName]&lt;/code&gt;.
+Accordingly, &lt;code&gt;-[FancyPerson fullName]&lt;/code&gt; should declare that it depends on whatever &lt;code&gt;-[Person fullName]&lt;/code&gt; depends on, plus the &lt;code&gt;suffix&lt;/code&gt; key.
+And &lt;code&gt;-[TitledPerson fullName]&lt;/code&gt; depends on only &lt;code&gt;title&lt;/code&gt; and &lt;code&gt;familyName&lt;/code&gt;, regardless of the superclass.&lt;/p&gt;
+
+&lt;p&gt;Let’s start with the enhancement case.&lt;/p&gt;
+
+&lt;h3 id=&quot;enhancing-key-path-dependencies&quot;&gt;Enhancing key path dependencies&lt;/h3&gt;
+
+&lt;p&gt;The naive approach has a compile error:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-objc&quot; data-lang=&quot;objc&quot;&gt;&lt;span class=&quot;k&quot;&gt;@implementation&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;FancyPerson&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSSet&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;keyPathsForValuesAffectingFullName&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[[&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;super&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;keyPathsForValuesAffectingFullName&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;setByAddingObject&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;@&amp;quot;suffix&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+    &lt;span class=&quot;c1&quot;&gt;// error: no known class method for selector &amp;#39;keyPathsForValuesAffectingFullName&amp;#39;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Key path dependencies are typically private, not declared in a class’s interface, so the call to super will be a warning or error.
+You could declare that you &lt;em&gt;know&lt;/em&gt; the superclass to implement that method, but that couples to the implementation and may not be correct if &lt;code&gt;Person&lt;/code&gt; is instead overriding the dispatching method &lt;code&gt;+keyPathsForValuesAffectingValueForKey:&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;Similar to &lt;a href=&quot;/code/2014/03/02/subclassing-delegates.html&quot;&gt;subclassing delegates&lt;/a&gt;, the correct solution is to use the defining class&lt;sup id=&quot;fnref:fn-defining-class&quot;&gt;&lt;a href=&quot;#fn:fn-defining-class&quot; class=&quot;footnote&quot;&gt;5&lt;/a&gt;&lt;/sup&gt;:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-objc&quot; data-lang=&quot;objc&quot;&gt;&lt;span class=&quot;k&quot;&gt;@implementation&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;FancyPerson&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSSet&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;keyPathsForValuesAffectingFullName&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;bp&quot;&gt;NSSet&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;superclassKeys&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FancyPerson&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;superclass&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;keyPathsForValuesAffectingValueForKey&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;@&amp;quot;fullName&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;superclassKeys&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;setByAddingObject&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;@&amp;quot;suffix&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;This is robust against the superclass’s implementation, no matter if it specifies dependencies by implementing the specific method, overriding the dispatching one, or none at all.&lt;/p&gt;
+
+&lt;h3 id=&quot;replacing-key-path-dependencies&quot;&gt;Replacing key path dependencies&lt;/h3&gt;
+
+&lt;p&gt;Now let’s consider &lt;code&gt;TitledPerson&lt;/code&gt;’s override:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-objc&quot; data-lang=&quot;objc&quot;&gt;&lt;span class=&quot;k&quot;&gt;@implementation&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;TitledPerson&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSSet&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;keyPathsForValuesAffectingFullName&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSSet&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;setWithObjects&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;@&amp;quot;title&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;@&amp;quot;familyName&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;nil&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;This is fine.
+However there will be a problem if &lt;code&gt;Person&lt;/code&gt; were to instead override the dispatching method:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-objc&quot; data-lang=&quot;objc&quot;&gt;&lt;span class=&quot;k&quot;&gt;@implementation&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Person&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSSet&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;keyPathsForValuesAffectingValueForKey:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSString&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;key&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;([&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;key&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;isEqual&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;@&amp;quot;fullName&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;])&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// don&amp;#39;t do this&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSSet&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;setWithObjects&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;@&amp;quot;givenName&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;@&amp;quot;familyName&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;nil&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;super&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;keyPathsForValuesAffectingValueForKey&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;In this case, the call &lt;code&gt;[TitledPerson keyPathsForValuesAffectingValueForKey:@&quot;fullName&quot;]&lt;/code&gt; completely ignores the &lt;code&gt;TitledPerson&lt;/code&gt; override!
+Specifically, only when the call to super hits &lt;code&gt;NSObject&lt;/code&gt;’s implementation of &lt;code&gt;+keyPathsForValuesAffectingValueForKey:&lt;/code&gt; will the subclass’s override of &lt;code&gt;+keyPathsForValuesAffectingFullName&lt;/code&gt; be called.
+You are in a maze of twisty little passages, all alike.&lt;/p&gt;
+
+&lt;p&gt;The problem here is the naive implementation of the &lt;code&gt;+[Person keyPathsForValuesAffectingValueForKey:]&lt;/code&gt; override.&lt;/p&gt;
+
+&lt;h2 id=&quot;correctly-overriding-keypathsforvaluesaffectingvalueforkey&quot;&gt;Correctly overriding +keyPathsForValuesAffectingValueForKey:&lt;/h2&gt;
+
+&lt;p&gt;It’s valid for dependencies to be specified in &lt;em&gt;either&lt;/em&gt; the dispatching or specific methods, all the way up the inheritance chain.
+Correctly overriding &lt;code&gt;+keyPathsForValuesAffectingValueForKey:&lt;/code&gt; requires some tricky code, which I’ve wrapped in a function &lt;a href=&quot;https://github.com/jmah/MyLilKeyPathHelpers/blob/7ed5da8355090b27ceeeb02a20baa7bf7a63eb8a/MyLilKeyPathHelpers/MLHDependentKeyPaths.m#L41&quot;&gt;MLHOverrideKeyPathsForValueAffectingKey&lt;/a&gt; in &lt;a href=&quot;https://github.com/jmah/MyLilKeyPathHelpers&quot;&gt;MyLilKeyPathHelpers&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;The &lt;code&gt;Person&lt;/code&gt; class can use this to correctly override the dispatching method:&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-objc&quot; data-lang=&quot;objc&quot;&gt;&lt;span class=&quot;k&quot;&gt;@implementation&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;Person&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSSet&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nf&quot;&gt;keyPathsForValuesAffectingValueForKey:&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSString&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;key&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;MLHOverrideKeyPathsForValueAffectingKey&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Person&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;class&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;NO&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;key&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;^&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSSet&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;superKeyPaths&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;([&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;key&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;isEqual&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;@&amp;quot;fullName&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;])&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// or -hasSuffix:, etc.&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;NSSet&lt;/span&gt; &lt;span class=&quot;nl&quot;&gt;setWithObjects&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;@&amp;quot;givenName&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;@&amp;quot;familyName&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;nil&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;];&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;else&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;superKeyPaths&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+        &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;});&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;@end&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;With this implementation, calling &lt;code&gt;[TitledPerson keyPathsForValuesAffectingValueForKey:@&quot;fullName&quot;]&lt;/code&gt; results in a call to &lt;code&gt;[TitledPerson keyPathsForValuesAffectingFullName]&lt;/code&gt; and that’s all.
+Accomplishing this unfortunately requires a reimplementation of the method name logic in &lt;code&gt;NSObject&lt;/code&gt;’s &lt;code&gt;+keyPathsForValuesAffectingValueForKey:&lt;/code&gt;; I believe this is inescapable.&lt;/p&gt;
+
+&lt;p&gt;All the parameters to this function are documented in the &lt;a href=&quot;https://github.com/jmah/MyLilKeyPathHelpers/blob/7ed5da8355090b27ceeeb02a20baa7bf7a63eb8a/MyLilKeyPathHelpers/MLHDependentKeyPaths.h#L35&quot;&gt;header&lt;/a&gt;; take a look.
+This same technique could be applied to an override of &lt;code&gt;-valueForKey:&lt;/code&gt;, though that generally doesn’t have the same issues because the dispatch targets (that is, getter methods) &lt;em&gt;are&lt;/em&gt; declared in a class’s public interface.&lt;/p&gt;
+&lt;div class=&quot;footnotes&quot;&gt;
+  &lt;ol&gt;
+    &lt;li id=&quot;fn:fn-names&quot;&gt;
+      &lt;p&gt;and ridden with Anglo-centric cultural assumptions; see &lt;a href=&quot;http://www.kalzumeus.com/2010/06/17/falsehoods-programmers-believe-about-names/&quot;&gt;Falsehoods Programmers Believe About Names&lt;/a&gt; &lt;a href=&quot;#fnref:fn-names&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:fn-avoid-categories&quot;&gt;
+      &lt;p&gt;As a rule I try to avoid categories on framework classes as much as possible. I feel this is one of the rare cases when it’s appropriate. &lt;a href=&quot;#fnref:fn-avoid-categories&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:fn-lccn&quot;&gt;
+      &lt;p&gt;&lt;a href=&quot;http://en.wikipedia.org/wiki/Library_of_Congress_Control_Number&quot;&gt;Library of Congress Control Number&lt;/a&gt; &lt;a href=&quot;#fnref:fn-lccn&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:fn-custom-deps&quot;&gt;
+      &lt;p&gt;Some “ForSorting” values depend on more than one key. For example, &lt;code&gt;-titleForSorting&lt;/code&gt; depends on both &lt;code&gt;title&lt;/code&gt; and &lt;code&gt;dominantLanguageCode&lt;/code&gt;, so “Die Another Day” sorts under “D” while your German copy of “Die Bourne Identität” sorts under “B”. Incidentally this causes a lot of user confusion when the language information is not correct. &lt;a href=&quot;#fnref:fn-custom-deps&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+    &lt;li id=&quot;fn:fn-defining-class&quot;&gt;
+      &lt;p&gt;&lt;a href=&quot;mlkph&quot;&gt;MyLilKeyPathHelpers&lt;/a&gt; provides a helper macro for this called &lt;code&gt;_definingClass&lt;/code&gt;: &lt;a href=&quot;#fnref:fn-defining-class&quot; class=&quot;reversefootnote&quot;&gt;&amp;#8617;&lt;/a&gt;&lt;/p&gt;
+    &lt;/li&gt;
+  &lt;/ol&gt;
+&lt;/div&gt;
+</description>
+				<pubDate>Sun, 11 Jan 2015 19:25:59 -0800</pubDate>
+				<link>http://devetc.org/code/2015/01/11/dependent-key-paths.html</link>
+				<guid isPermaLink="true">http://devetc.org/code/2015/01/11/dependent-key-paths.html</guid>
+			</item>
+		
+			<item>
 				<title>Mutable Return Values</title>
 				<description>&lt;p&gt;Over the past year I’ve had the opportunity to interview a couple dozen candidates for iOS positions (heavy in Objective-C) at Fitbit.
 Early on in the process we discuss some commonly used concepts, plus do some light coding.
